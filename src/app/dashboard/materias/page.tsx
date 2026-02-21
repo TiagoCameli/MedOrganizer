@@ -1,0 +1,207 @@
+'use client'
+
+import { useState } from 'react'
+import { useMaterias } from '@/hooks/useMaterias'
+import { useHorarios } from '@/hooks/useHorarios'
+import { useEventos } from '@/hooks/useEventos'
+import { useNotas } from '@/hooks/useNotas'
+import { Materia } from '@/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Plus, Pencil, Trash2, BookOpen, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+
+const PRESET_COLORS = [
+  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+  '#ec4899', '#f43f5e', '#ef4444', '#f97316',
+  '#eab308', '#22c55e', '#14b8a6', '#06b6d4',
+  '#3b82f6', '#2563eb', '#7c3aed', '#64748b',
+]
+
+export default function MateriasPage() {
+  const { materias, loading, addMateria, updateMateria, deleteMateria } = useMaterias()
+  const { horarios } = useHorarios()
+  const { eventos } = useEventos()
+  const { notas, calcularMedia } = useNotas()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingMateria, setEditingMateria] = useState<Materia | null>(null)
+  const [nome, setNome] = useState('')
+  const [professor, setProfessor] = useState('')
+  const [cor, setCor] = useState('#6366f1')
+  const [saving, setSaving] = useState(false)
+
+  const resetForm = () => {
+    setNome('')
+    setProfessor('')
+    setCor('#6366f1')
+    setEditingMateria(null)
+  }
+
+  const openEdit = (materia: Materia) => {
+    setEditingMateria(materia)
+    setNome(materia.nome)
+    setProfessor(materia.professor || '')
+    setCor(materia.cor)
+    setDialogOpen(true)
+  }
+
+  const handleSave = async () => {
+    if (!nome.trim()) {
+      toast.error('Nome da matéria é obrigatório')
+      return
+    }
+    setSaving(true)
+    try {
+      if (editingMateria) {
+        await updateMateria(editingMateria.id, { nome, professor: professor || null, cor })
+        toast.success('Matéria atualizada!')
+      } else {
+        await addMateria({ nome, professor: professor || null, cor })
+        toast.success('Matéria adicionada!')
+      }
+      setDialogOpen(false)
+      resetForm()
+    } catch (error: unknown) {
+      toast.error('Erro ao salvar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+    }
+    setSaving(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza? Isso excluirá também os horários, eventos e notas desta matéria.')) return
+    try {
+      await deleteMateria(id)
+      toast.success('Matéria excluída!')
+    } catch (error: unknown) {
+      toast.error('Erro ao excluir: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+    }
+  }
+
+  const getAulasPorSemana = (materiaId: string) => {
+    return horarios.filter(h => h.materia_id === materiaId).length
+  }
+
+  const getProximaProva = (materiaId: string) => {
+    const now = new Date()
+    const proxima = eventos
+      .filter(e => e.materia_id === materiaId && e.tipo === 'prova' && new Date(e.data_entrega) > now)
+      .sort((a, b) => new Date(a.data_entrega).getTime() - new Date(b.data_entrega).getTime())[0]
+    if (!proxima) return null
+    return new Date(proxima.data_entrega).toLocaleDateString('pt-BR')
+  }
+
+  const getMediaMateria = (materiaId: string) => {
+    const notasMateria = notas.filter(n => n.materia_id === materiaId)
+    return calcularMedia(notasMateria)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Matérias</h1>
+          <p className="text-muted-foreground">Gerencie suas disciplinas do semestre</p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
+          <DialogTrigger asChild>
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Plus className="mr-2 h-4 w-4" /> Nova Matéria
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingMateria ? 'Editar Matéria' : 'Nova Matéria'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome da Matéria *</Label>
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Anatomia" />
+              </div>
+              <div className="space-y-2">
+                <Label>Professor (opcional)</Label>
+                <Input value={professor} onChange={(e) => setProfessor(e.target.value)} placeholder="Nome do professor" />
+              </div>
+              <div className="space-y-2">
+                <Label>Cor</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{ backgroundColor: c, borderColor: cor === c ? '#000' : 'transparent' }}
+                      onClick={() => setCor(c)}
+                    />
+                  ))}
+                </div>
+                <Input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="w-20 h-10" />
+              </div>
+              <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingMateria ? 'Atualizar' : 'Adicionar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {materias.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground text-center">
+              Nenhuma matéria cadastrada ainda.<br />
+              Adicione sua primeira matéria!
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {materias.map((materia) => (
+            <Card key={materia.id} className="overflow-hidden">
+              <div className="h-2" style={{ backgroundColor: materia.cor }} />
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg">{materia.nome}</CardTitle>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(materia)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(materia.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {materia.professor && (
+                  <p className="text-muted-foreground">Prof. {materia.professor}</p>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{getAulasPorSemana(materia.id)} aulas/semana</span>
+                  <span>Média: {getMediaMateria(materia.id).toFixed(1)}</span>
+                </div>
+                {getProximaProva(materia.id) && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400">
+                    Próxima prova: {getProximaProva(materia.id)}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
