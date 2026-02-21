@@ -3,6 +3,7 @@ export interface Materia {
   user_id: string
   nome: string
   professor: string | null
+  semestre: number | null
   cor: string
   created_at: string
 }

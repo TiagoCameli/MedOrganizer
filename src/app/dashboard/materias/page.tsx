@@ -9,6 +9,7 @@ import { Materia } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Plus, Pencil, Trash2, BookOpen, Loader2 } from 'lucide-react'
@@ -30,12 +31,14 @@ export default function MateriasPage() {
   const [editingMateria, setEditingMateria] = useState<Materia | null>(null)
   const [nome, setNome] = useState('')
   const [professor, setProfessor] = useState('')
+  const [semestre, setSemestre] = useState('')
   const [cor, setCor] = useState('#6366f1')
   const [saving, setSaving] = useState(false)
 
   const resetForm = () => {
     setNome('')
     setProfessor('')
+    setSemestre('')
     setCor('#6366f1')
     setEditingMateria(null)
   }
@@ -44,6 +47,7 @@ export default function MateriasPage() {
     setEditingMateria(materia)
     setNome(materia.nome)
     setProfessor(materia.professor || '')
+    setSemestre(materia.semestre ? String(materia.semestre) : '')
     setCor(materia.cor)
     setDialogOpen(true)
   }
@@ -55,17 +59,19 @@ export default function MateriasPage() {
     }
     setSaving(true)
     try {
+      const materiaData = { nome, professor: professor || null, semestre: semestre ? Number(semestre) : null, cor }
       if (editingMateria) {
-        await updateMateria(editingMateria.id, { nome, professor: professor || null, cor })
+        await updateMateria(editingMateria.id, materiaData)
         toast.success('Matéria atualizada!')
       } else {
-        await addMateria({ nome, professor: professor || null, cor })
+        await addMateria(materiaData)
         toast.success('Matéria adicionada!')
       }
       setDialogOpen(false)
       resetForm()
     } catch (error: unknown) {
-      toast.error('Erro ao salvar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+      const msg = error instanceof Error ? error.message : (error as { message?: string })?.message || JSON.stringify(error)
+      toast.error('Erro ao salvar: ' + msg)
     }
     setSaving(false)
   }
@@ -133,6 +139,17 @@ export default function MateriasPage() {
                 <Input value={professor} onChange={(e) => setProfessor(e.target.value)} placeholder="Nome do professor" />
               </div>
               <div className="space-y-2">
+                <Label>Semestre *</Label>
+                <Select value={semestre} onValueChange={setSemestre}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                      <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Cor</Label>
                 <div className="flex flex-wrap gap-2">
                   {PRESET_COLORS.map((c) => (
@@ -185,6 +202,9 @@ export default function MateriasPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
+                {materia.semestre && (
+                  <p className="text-muted-foreground font-medium">{materia.semestre}º Semestre</p>
+                )}
                 {materia.professor && (
                   <p className="text-muted-foreground">Prof. {materia.professor}</p>
                 )}

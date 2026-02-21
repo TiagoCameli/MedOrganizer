@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Pencil, Trash2, Clock, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Pencil, Trash2, Clock, Loader2, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -22,18 +23,21 @@ export default function HorariosPage() {
   const { materias } = useMaterias()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingHorario, setEditingHorario] = useState<Horario | null>(null)
+  const [formSemestre, setFormSemestre] = useState('')
   const [materiaId, setMateriaId] = useState('')
   const [diaSemana, setDiaSemana] = useState('1')
   const [horaInicio, setHoraInicio] = useState('08:00')
   const [horaFim, setHoraFim] = useState('10:00')
   const [local, setLocal] = useState('')
   const [saving, setSaving] = useState(false)
+  const [filtroSemestre, setFiltroSemestre] = useState<string>('todos')
 
   const now = new Date()
   const currentDay = now.getDay()
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
   const resetForm = () => {
+    setFormSemestre('')
     setMateriaId('')
     setDiaSemana('1')
     setHoraInicio('08:00')
@@ -42,8 +46,15 @@ export default function HorariosPage() {
     setEditingHorario(null)
   }
 
+  // Matérias filtradas pelo semestre selecionado no form
+  const materiasFiltradas = formSemestre
+    ? materias.filter(m => m.semestre === Number(formSemestre))
+    : materias
+
   const openEdit = (horario: Horario) => {
     setEditingHorario(horario)
+    const mat = materias.find(m => m.id === horario.materia_id)
+    setFormSemestre(mat?.semestre ? String(mat.semestre) : '')
     setMateriaId(horario.materia_id)
     setDiaSemana(String(horario.dia_semana))
     setHoraInicio(horario.hora_inicio.slice(0, 5))
@@ -53,6 +64,7 @@ export default function HorariosPage() {
   }
 
   const handleSave = async () => {
+    if (!formSemestre) { toast.error('Selecione o semestre'); return }
     if (!materiaId) { toast.error('Selecione uma matéria'); return }
     if (horaFim <= horaInicio) { toast.error('Horário de término deve ser após o início'); return }
 
@@ -90,9 +102,20 @@ export default function HorariosPage() {
     }
   }
 
+  // Semestres disponíveis (extraídos das matérias cadastradas)
+  const semestresDisponiveis = [...new Set(materias.map(m => m.semestre).filter(Boolean) as number[])].sort((a, b) => a - b)
+
+  // Horários filtrados por semestre
+  const horariosFiltrados = filtroSemestre === 'todos'
+    ? horarios
+    : horarios.filter(h => {
+        const materia = materias.find(m => m.id === h.materia_id)
+        return materia?.semestre === Number(filtroSemestre)
+      })
+
   const getHorariosForSlot = (dia: number, hora: string) => {
     const horaNum = parseInt(hora.split(':')[0])
-    return horarios.filter(h => {
+    return horariosFiltrados.filter(h => {
       if (h.dia_semana !== dia) return false
       const inicio = parseInt(h.hora_inicio.split(':')[0])
       const fim = parseInt(h.hora_fim.split(':')[0])
@@ -142,20 +165,37 @@ export default function HorariosPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Matéria *</Label>
-                <Select value={materiaId} onValueChange={setMateriaId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <Label>Semestre *</Label>
+                <Select value={formSemestre} onValueChange={(val) => { setFormSemestre(val); setMateriaId('') }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
                   <SelectContent>
-                    {materias.map(m => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <span className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
-                          {m.nome}
-                        </span>
-                      </SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                      <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Matéria *</Label>
+                {!formSemestre ? (
+                  <p className="text-sm text-muted-foreground py-2">Selecione o semestre primeiro</p>
+                ) : materiasFiltradas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">Nenhuma matéria cadastrada no {formSemestre}º semestre</p>
+                ) : (
+                  <Select value={materiaId} onValueChange={setMateriaId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a matéria" /></SelectTrigger>
+                    <SelectContent>
+                      {materiasFiltradas.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                            {m.nome}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Dia da Semana *</Label>
@@ -190,6 +230,25 @@ export default function HorariosPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Filtro por semestre */}
+      {semestresDisponiveis.length > 0 && (
+        <div className="flex items-center gap-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filtroSemestre} onValueChange={setFiltroSemestre}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os semestres</SelectItem>
+              {semestresDisponiveis.map(s => (
+                <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filtroSemestre !== 'todos' && (
+            <Badge variant="secondary">{horariosFiltrados.length} aula(s)</Badge>
+          )}
+        </div>
+      )}
 
       {materias.length === 0 ? (
         <Card>
