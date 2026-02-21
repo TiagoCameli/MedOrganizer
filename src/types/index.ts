@@ -32,6 +32,15 @@ export interface Evento {
   materia?: Materia
 }
 
+export interface Semestre {
+  id: string
+  user_id: string
+  numero: number
+  data_inicio: string
+  data_fim: string
+  created_at: string
+}
+
 export interface Nota {
   id: string
   user_id: string

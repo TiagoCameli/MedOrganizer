@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useEventos } from '@/hooks/useEventos'
 import { useMaterias } from '@/hooks/useMaterias'
+import { useSemestres } from '@/hooks/useSemestres'
 import { Evento } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +11,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   format,
@@ -47,11 +48,19 @@ const TIPO_COLORS: Record<string, string> = {
 export default function AgendaPage() {
   const { eventos, loading, addEvento, updateEvento, deleteEvento, toggleConcluido } = useEventos()
   const { materias } = useMaterias()
+  const { semestres, upsertSemestre, deleteSemestre } = useSemestres()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [semDialogOpen, setSemDialogOpen] = useState(false)
   const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
   const [filtroMateria, setFiltroMateria] = useState<string>('todas')
+
+  // Semester form state
+  const [semNumero, setSemNumero] = useState('')
+  const [semInicio, setSemInicio] = useState('')
+  const [semFim, setSemFim] = useState('')
+  const [savingSem, setSavingSem] = useState(false)
 
   // Form state
   const [titulo, setTitulo] = useState('')
@@ -118,6 +127,43 @@ export default function AgendaPage() {
     } catch (error: unknown) {
       toast.error('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
     }
+  }
+
+  const handleSaveSemestre = async () => {
+    if (!semNumero) { toast.error('Selecione o semestre'); return }
+    if (!semInicio || !semFim) { toast.error('Preencha as datas de início e fim'); return }
+    if (semFim <= semInicio) { toast.error('Data final deve ser após a data de início'); return }
+
+    setSavingSem(true)
+    try {
+      await upsertSemestre(Number(semNumero), semInicio, semFim)
+      toast.success('Período do semestre salvo!')
+      setSemDialogOpen(false)
+      setSemNumero('')
+      setSemInicio('')
+      setSemFim('')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : (error as { message?: string })?.message || 'Erro desconhecido'
+      toast.error('Erro: ' + msg)
+    }
+    setSavingSem(false)
+  }
+
+  const handleDeleteSemestre = async (id: string) => {
+    if (!confirm('Remover período deste semestre?')) return
+    try {
+      await deleteSemestre(id)
+      toast.success('Período removido!')
+    } catch {
+      toast.error('Erro ao remover')
+    }
+  }
+
+  const openEditSemestre = (sem: { numero: number; data_inicio: string; data_fim: string }) => {
+    setSemNumero(String(sem.numero))
+    setSemInicio(sem.data_inicio)
+    setSemFim(sem.data_fim)
+    setSemDialogOpen(true)
   }
 
   const filteredEventos = useMemo(() => {
@@ -256,6 +302,99 @@ export default function AgendaPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Períodos dos Semestres */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Settings2 className="h-4 w-4 text-indigo-600" />
+              Períodos dos Semestres
+            </CardTitle>
+            <Dialog open={semDialogOpen} onOpenChange={(open) => { setSemDialogOpen(open); if (!open) { setSemNumero(''); setSemInicio(''); setSemFim('') } }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-1 h-3 w-3" /> Definir Período
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Período do Semestre</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Semestre *</Label>
+                    <Select value={semNumero} onValueChange={setSemNumero}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                          <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data de Início *</Label>
+                      <Input type="date" value={semInicio} onChange={(e) => setSemInicio(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data de Término *</Label>
+                      <Input type="date" value={semFim} onChange={(e) => setSemFim(e.target.value)} />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveSemestre} disabled={savingSem} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                    {savingSem && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {semestres.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Nenhum período definido. Clique em &quot;Definir Período&quot; para configurar.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {semestres.map(sem => {
+                const now = new Date()
+                const inicio = new Date(sem.data_inicio + 'T00:00:00')
+                const fim = new Date(sem.data_fim + 'T23:59:59')
+                const isActive = now >= inicio && now <= fim
+                return (
+                  <div
+                    key={sem.id}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-sm ${
+                      isActive ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''
+                    }`}
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {sem.numero}º Semestre
+                        {isActive && <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Atual</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(inicio, 'dd/MM/yyyy')} — {format(fim, 'dd/MM/yyyy')}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSemestre(sem)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSemestre(sem.id)}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Calendar */}
       <Card>
