@@ -295,33 +295,46 @@ export default function HorariosPage() {
                   </div>,
                   ...DIAS_GRID.map(dia => {
                     const slotHorarios = getHorariosForSlot(dia, hora)
+                    const hasClass = slotHorarios.length > 0
                     return (
-                      <div key={`${dia}-${hora}`} className="bg-background p-1 min-h-[60px] border-t">
+                      <div key={`${dia}-${hora}`} className={`bg-background min-h-[60px] border-t ${hasClass ? 'p-0' : 'p-1'}`}>
                         {slotHorarios.map(h => {
                           const startHour = parseInt(h.hora_inicio.split(':')[0])
-                          if (startHour !== horaNum) return null
+                          const endHour = parseInt(h.hora_fim.split(':')[0])
+                          const isFirstSlot = startHour === horaNum
+                          const isLastSlot = endHour - 1 === horaNum
                           const materia = materias.find(m => m.id === h.materia_id)
                           const happening = isHappeningNow(h)
                           return (
                             <div
                               key={h.id}
-                              className={`rounded-md p-2 text-xs text-white group relative ${
+                              className={`h-full min-h-[60px] px-2 py-1.5 text-xs text-white group relative ${
+                                isFirstSlot && isLastSlot ? 'rounded-md' :
+                                isFirstSlot ? 'rounded-t-md' :
+                                isLastSlot ? 'rounded-b-md' : ''
+                              } ${
                                 happening ? 'ring-2 ring-green-400 ring-offset-1' : ''
                               }`}
                               style={{ backgroundColor: materia?.cor || '#6366f1' }}
                             >
-                              <div className="font-medium truncate">{materia?.nome}</div>
-                              <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
-                              {h.local && <div className="opacity-80">{h.local}</div>}
-                              {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
-                              <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                                <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
+                              {isFirstSlot ? (
+                                <>
+                                  <div className="font-medium truncate">{materia?.nome}</div>
+                                  <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
+                                  {h.local && <div className="opacity-80">{h.local}</div>}
+                                  {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
+                                  <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                                    <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="opacity-0">&nbsp;</div>
+                              )}
                             </div>
                           )
                         })}
