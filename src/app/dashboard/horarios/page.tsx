@@ -41,6 +41,19 @@ export default function HorariosPage() {
   const currentDay = now.getDay()
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
+  // Calcular as datas da semana atual (Seg-Sáb)
+  const getWeekDates = () => {
+    const dates: Record<number, number> = {}
+    for (const dia of DIAS_GRID) {
+      const diff = dia - currentDay
+      const date = new Date(now)
+      date.setDate(now.getDate() + diff)
+      dates[dia] = date.getDate()
+    }
+    return dates
+  }
+  const weekDates = getWeekDates()
+
   const resetForm = () => {
     setFormSemestre('')
     setMateriaId('')
@@ -280,11 +293,12 @@ export default function HorariosPage() {
               {DIAS_GRID.map(dia => (
                 <div
                   key={dia}
-                  className={`bg-muted p-3 text-center text-sm font-medium ${
+                  className={`bg-muted p-3 text-center font-medium ${
                     dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
                   }`}
                 >
-                  {DIAS_SEMANA[dia]}
+                  <div className="text-sm">{DIAS_SEMANA[dia]}</div>
+                  <div className={`text-lg font-bold ${dia === currentDay ? '' : 'text-muted-foreground'}`}>{weekDates[dia]}</div>
                 </div>
               ))}
             </div>
