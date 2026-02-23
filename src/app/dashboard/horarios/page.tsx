@@ -16,7 +16,12 @@ import { toast } from 'sonner'
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const DIAS_GRID = [1, 2, 3, 4, 5, 6] // Segunda a Sábado
-const HORAS = Array.from({ length: 16 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`)
+const PIXELS_PER_HOUR = 64
+
+const timeToMinutes = (time: string) => {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
 
 export default function HorariosPage() {
   const { horarios, loading, addHorario, updateHorario, deleteHorario } = useHorarios()
@@ -113,14 +118,8 @@ export default function HorariosPage() {
         return materia?.semestre === Number(filtroSemestre)
       })
 
-  const getHorariosForSlot = (dia: number, hora: string) => {
-    const horaNum = parseInt(hora.split(':')[0])
-    return horariosFiltrados.filter(h => {
-      if (h.dia_semana !== dia) return false
-      const inicio = parseInt(h.hora_inicio.split(':')[0])
-      const fim = parseInt(h.hora_fim.split(':')[0])
-      return horaNum >= inicio && horaNum < fim
-    })
+  const getHorariosForDay = (dia: number) => {
+    return horariosFiltrados.filter(h => h.dia_semana === dia)
   }
 
   const isHappeningNow = (horario: Horario) => {
@@ -129,13 +128,16 @@ export default function HorariosPage() {
       currentTime < horario.hora_fim.slice(0, 5)
   }
 
-  // Determine which hours to show (only show hours that have classes or are common)
-  const activeHours = HORAS.filter(hora => {
-    const horaNum = parseInt(hora.split(':')[0])
-    // Always show 7-18 range
-    if (horaNum >= 7 && horaNum <= 18) return true
-    // Also show if there are classes at this time
-    return DIAS_GRID.some(dia => getHorariosForSlot(dia, hora).length > 0)
+  // Determine visible hour range based on classes
+  const allStartHours = horariosFiltrados.map(h => Math.floor(timeToMinutes(h.hora_inicio) / 60))
+  const allEndHours = horariosFiltrados.map(h => Math.ceil(timeToMinutes(h.hora_fim) / 60))
+  const minHour = allStartHours.length > 0 ? Math.min(7, ...allStartHours) : 7
+  const maxHour = allEndHours.length > 0 ? Math.max(19, ...allEndHours) : 19
+  const gridStartMinutes = minHour * 60
+  const totalGridHeight = (maxHour - minHour) * PIXELS_PER_HOUR
+  const visibleHours = Array.from({ length: maxHour - minHour + 1 }, (_, i) => {
+    const h = minHour + i
+    return `${String(h).padStart(2, '0')}:00`
   })
 
   if (loading) {
@@ -272,8 +274,8 @@ export default function HorariosPage() {
       ) : (
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
-            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-              {/* Header */}
+            {/* Header */}
+            <div className="grid gap-px bg-border rounded-t-lg overflow-hidden" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
               <div className="bg-muted p-3 text-center text-sm font-medium">Horário</div>
               {DIAS_GRID.map(dia => (
                 <div
@@ -285,63 +287,79 @@ export default function HorariosPage() {
                   {DIAS_SEMANA[dia]}
                 </div>
               ))}
+            </div>
 
-              {/* Time slots */}
-              {activeHours.map(hora => {
-                const horaNum = parseInt(hora.split(':')[0])
-                return [
-                  <div key={`time-${hora}`} className="bg-background p-2 text-center text-xs text-muted-foreground flex items-center justify-center border-t">
-                    {hora}
-                  </div>,
-                  ...DIAS_GRID.map(dia => {
-                    const slotHorarios = getHorariosForSlot(dia, hora)
-                    const hasClass = slotHorarios.length > 0
-                    return (
-                      <div key={`${dia}-${hora}`} className={`bg-background min-h-[60px] border-t ${hasClass ? 'p-0' : 'p-1'}`}>
-                        {slotHorarios.map(h => {
-                          const startHour = parseInt(h.hora_inicio.split(':')[0])
-                          const endHour = parseInt(h.hora_fim.split(':')[0])
-                          const isFirstSlot = startHour === horaNum
-                          const isLastSlot = endHour - 1 === horaNum
-                          const materia = materias.find(m => m.id === h.materia_id)
-                          const happening = isHappeningNow(h)
-                          return (
-                            <div
-                              key={h.id}
-                              className={`h-full min-h-[60px] px-2 py-1.5 text-xs text-white group relative ${
-                                isFirstSlot && isLastSlot ? 'rounded-md' :
-                                isFirstSlot ? 'rounded-t-md' :
-                                isLastSlot ? 'rounded-b-md' : ''
-                              } ${
-                                happening ? 'ring-2 ring-green-400 ring-offset-1' : ''
-                              }`}
-                              style={{ backgroundColor: materia?.cor || '#6366f1' }}
-                            >
-                              {isFirstSlot ? (
-                                <>
-                                  <div className="font-medium truncate">{materia?.nome}</div>
-                                  <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
-                                  {h.local && <div className="opacity-80">{h.local}</div>}
-                                  {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
-                                  <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                                    <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                                      <Pencil className="h-3 w-3" />
-                                    </button>
-                                    <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="opacity-0">&nbsp;</div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })
-                ]
+            {/* Body */}
+            <div className="grid gap-px bg-border rounded-b-lg" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
+              {/* Time labels column */}
+              <div className="bg-background relative" style={{ height: totalGridHeight }}>
+                {visibleHours.map((hora, i) => (
+                  <div
+                    key={hora}
+                    className="absolute left-0 right-0 flex items-center justify-center"
+                    style={{ top: i * PIXELS_PER_HOUR - 8, height: 16 }}
+                  >
+                    <span className="text-[11px] text-muted-foreground bg-background px-1 leading-none">{hora}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Day columns */}
+              {DIAS_GRID.map(dia => {
+                const dayHorarios = getHorariosForDay(dia)
+                return (
+                  <div
+                    key={dia}
+                    className="bg-background relative"
+                    style={{ height: totalGridHeight }}
+                  >
+                    {/* Hour grid lines */}
+                    {visibleHours.map((hora, i) => (
+                      <div
+                        key={hora}
+                        className="absolute left-0 right-0 border-t border-border/50"
+                        style={{ top: i * PIXELS_PER_HOUR }}
+                      />
+                    ))}
+
+                    {/* Class blocks */}
+                    {dayHorarios.map(h => {
+                      const materia = materias.find(m => m.id === h.materia_id)
+                      const happening = isHappeningNow(h)
+                      const startMin = timeToMinutes(h.hora_inicio)
+                      const endMin = timeToMinutes(h.hora_fim)
+                      const top = ((startMin - gridStartMinutes) / 60) * PIXELS_PER_HOUR
+                      const height = ((endMin - startMin) / 60) * PIXELS_PER_HOUR
+
+                      return (
+                        <div
+                          key={h.id}
+                          className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-xs text-white group overflow-hidden z-10 ${
+                            happening ? 'ring-2 ring-green-400 ring-offset-1' : ''
+                          }`}
+                          style={{
+                            backgroundColor: materia?.cor || '#6366f1',
+                            top: top + 1,
+                            height: height - 2,
+                          }}
+                        >
+                          <div className="font-medium truncate">{materia?.nome}</div>
+                          <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
+                          {h.local && <div className="opacity-80">{h.local}</div>}
+                          {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
+                          <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                            <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
               })}
             </div>
           </div>
