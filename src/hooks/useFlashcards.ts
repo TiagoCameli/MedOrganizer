@@ -10,6 +10,37 @@ export function useFlashcards() {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
+  const uploadAttachment = async (file: File): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autenticado')
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { error } = await supabase.storage
+      .from('flashcard-attachments')
+      .upload(path, file)
+
+    if (error) throw error
+
+    const { data: urlData } = supabase.storage
+      .from('flashcard-attachments')
+      .getPublicUrl(path)
+
+    return urlData.publicUrl
+  }
+
+  const deleteAttachment = async (url: string) => {
+    const marker = '/flashcard-attachments/'
+    const idx = url.indexOf(marker)
+    if (idx === -1) return
+    const path = url.slice(idx + marker.length)
+
+    await supabase.storage
+      .from('flashcard-attachments')
+      .remove([path])
+  }
+
   const fetchFlashcards = useCallback(async (materiaId?: string, conteudoId?: string) => {
     setLoading(true)
     let query = supabase.from('flashcards').select('*').order('created_at', { ascending: false })
@@ -55,18 +86,25 @@ export function useFlashcards() {
     flashcard: Omit<Flashcard, 'id' | 'user_id' | 'created_at' | 'ease_factor' | 'interval_days' | 'repetitions' | 'next_review' | 'type' | 'group_id' | 'card_index' | 'status' | 'lapses' | 'learning_step'> & {
       type?: FlashcardType
       clozeTemplate?: string
+      attachmentFile?: File
     }
   ) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Não autenticado')
 
     const type = flashcard.type || 'basico'
-    const { clozeTemplate, type: _type, ...baseData } = flashcard
+    const { clozeTemplate, type: _type, attachmentFile, ...baseData } = flashcard
+
+    // Upload attachment if provided
+    let attachment_url: string | null = null
+    if (attachmentFile) {
+      attachment_url = await uploadAttachment(attachmentFile)
+    }
 
     if (type === 'basico') {
       const { data, error } = await supabase
         .from('flashcards')
-        .insert({ ...baseData, type: 'basico', group_id: null, card_index: null, user_id: user.id })
+        .insert({ ...baseData, type: 'basico', group_id: null, card_index: null, user_id: user.id, attachment_url })
         .select()
         .single()
 
@@ -78,8 +116,8 @@ export function useFlashcards() {
     if (type === 'basico_invertido') {
       const groupId = crypto.randomUUID()
       const rows = [
-        { ...baseData, type: 'basico_invertido' as const, group_id: groupId, card_index: 0, user_id: user.id },
-        { ...baseData, pergunta: baseData.resposta, resposta: baseData.pergunta, type: 'basico_invertido' as const, group_id: groupId, card_index: 1, user_id: user.id },
+        { ...baseData, type: 'basico_invertido' as const, group_id: groupId, card_index: 0, user_id: user.id, attachment_url },
+        { ...baseData, pergunta: baseData.resposta, resposta: baseData.pergunta, type: 'basico_invertido' as const, group_id: groupId, card_index: 1, user_id: user.id, attachment_url },
       ]
 
       const { data, error } = await supabase
@@ -107,6 +145,7 @@ export function useFlashcards() {
           group_id: null,
           card_index: null,
           user_id: user.id,
+          attachment_url,
         })
         .select()
         .single()
@@ -119,10 +158,28 @@ export function useFlashcards() {
     throw new Error(`Tipo de flashcard desconhecido: ${type}`)
   }
 
-  const updateFlashcard = async (id: string, updates: Partial<Omit<Flashcard, 'id' | 'user_id' | 'created_at' | 'ease_factor' | 'interval_days' | 'repetitions' | 'next_review' | 'type' | 'group_id' | 'card_index'>>) => {
+  const updateFlashcard = async (
+    id: string,
+    updates: Partial<Omit<Flashcard, 'id' | 'user_id' | 'created_at' | 'ease_factor' | 'interval_days' | 'repetitions' | 'next_review' | 'type' | 'group_id' | 'card_index'>>,
+    options?: { attachmentFile?: File; removeAttachment?: boolean; oldAttachmentUrl?: string | null }
+  ) => {
+    const finalUpdates = { ...updates }
+
+    if (options?.removeAttachment && options.oldAttachmentUrl) {
+      await deleteAttachment(options.oldAttachmentUrl)
+      finalUpdates.attachment_url = null
+    }
+
+    if (options?.attachmentFile) {
+      if (options.oldAttachmentUrl) {
+        await deleteAttachment(options.oldAttachmentUrl)
+      }
+      finalUpdates.attachment_url = await uploadAttachment(options.attachmentFile)
+    }
+
     const { data, error } = await supabase
       .from('flashcards')
-      .update(updates)
+      .update(finalUpdates)
       .eq('id', id)
       .select()
       .single()
@@ -133,6 +190,11 @@ export function useFlashcards() {
   }
 
   const deleteFlashcard = async (id: string, groupId?: string | null) => {
+    // Collect attachment URLs to clean up
+    const cardsToDelete = groupId
+      ? flashcards.filter(f => f.group_id === groupId)
+      : flashcards.filter(f => f.id === id)
+
     if (groupId) {
       const { error } = await supabase
         .from('flashcards')
@@ -150,9 +212,15 @@ export function useFlashcards() {
       if (error) throw error
       setFlashcards(prev => prev.filter(f => f.id !== id))
     }
+
+    // Clean up attachments from storage
+    const urls = new Set(cardsToDelete.map(c => c.attachment_url).filter(Boolean))
+    for (const url of urls) {
+      await deleteAttachment(url!).catch(() => {})
+    }
   }
 
-  return { flashcards, loading, fetchFlashcards, fetchStudyFlashcards, addFlashcard, updateFlashcard, deleteFlashcard }
+  return { flashcards, loading, fetchFlashcards, fetchStudyFlashcards, addFlashcard, updateFlashcard, deleteFlashcard, uploadAttachment, deleteAttachment }
 }
 
 /**

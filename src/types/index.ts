@@ -87,6 +87,7 @@ export interface Flashcard {
   status: CardStatus
   lapses: number
   learning_step: number
+  attachment_url?: string | null
   created_at: string
 }
 

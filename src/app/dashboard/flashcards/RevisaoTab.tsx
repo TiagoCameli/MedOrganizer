@@ -9,7 +9,7 @@ import { renderClozeQuestion, renderClozeAnswer } from '@/lib/cloze'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Brain, Calendar, TrendingUp, BookOpen, Loader2, X, RotateCcw, PartyPopper } from 'lucide-react'
+import { Brain, Calendar, TrendingUp, BookOpen, Loader2, X, RotateCcw, PartyPopper, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function RevisaoTab() {
@@ -199,6 +199,14 @@ export default function RevisaoTab() {
                   : (studyFlipped ? currentCard.resposta : currentCard.pergunta)
                 }
               </p>
+              {currentCard.attachment_url && (
+                currentCard.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                  ? <img src={currentCard.attachment_url} alt="Anexo" className="max-w-full max-h-[300px] rounded-lg mt-4 mx-auto" />
+                  : <a href={currentCard.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-4 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm transition-colors">
+                      <FileText className="h-4 w-4" />
+                      Ver PDF
+                    </a>
+              )}
               {!studyFlipped && (
                 <p className="text-sm text-muted-foreground mt-6">
                   Clique ou pressione Espaço para ver a resposta

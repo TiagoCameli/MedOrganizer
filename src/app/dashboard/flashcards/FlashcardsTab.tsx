@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, ChevronLeft, Loader2, X, Filter, Check, Copy, Type } from 'lucide-react'
+import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, ChevronLeft, Loader2, X, Filter, Check, Copy, Type, Paperclip, FileText, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 const TYPE_LABELS: Record<FlashcardType, string> = {
@@ -47,6 +47,12 @@ export default function FlashcardsTab() {
   const [resposta, setResposta] = useState('')
   const [clozeTemplate, setClozeTemplate] = useState('')
   const [formConteudoId, setFormConteudoId] = useState<string>('none')
+
+  // Attachment state
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null)
+  const [removeAttachment, setRemoveAttachment] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // New conteudo popover state
   const [newConteudoOpen, setNewConteudoOpen] = useState(false)
@@ -159,6 +165,9 @@ export default function FlashcardsTab() {
     setClozeTemplate('')
     setFormConteudoId('none')
     setEditingFlashcard(null)
+    setAttachmentFile(null)
+    setAttachmentPreview(null)
+    setRemoveAttachment(false)
   }
 
   const openEdit = (flashcard: Flashcard) => {
@@ -167,6 +176,9 @@ export default function FlashcardsTab() {
     setPergunta(flashcard.pergunta)
     setResposta(flashcard.resposta)
     setFormConteudoId(flashcard.conteudo_id || 'none')
+    setAttachmentFile(null)
+    setAttachmentPreview(null)
+    setRemoveAttachment(false)
     setDialogOpen(true)
   }
 
@@ -200,15 +212,19 @@ export default function FlashcardsTab() {
         conteudo_id: formConteudoId === 'none' ? null : formConteudoId,
         type: flashcardType,
         clozeTemplate: flashcardType === 'cloze' ? clozeTemplate : undefined,
+        attachmentFile: attachmentFile || undefined,
       }
 
       if (editingFlashcard) {
-        // Edit only works for basico cards (no type change for groups)
         await updateFlashcard(editingFlashcard.id, {
           pergunta: data.pergunta,
           resposta: data.resposta,
           materia_id: data.materia_id,
           conteudo_id: data.conteudo_id,
+        }, {
+          attachmentFile: attachmentFile || undefined,
+          removeAttachment,
+          oldAttachmentUrl: editingFlashcard.attachment_url,
         })
         toast.success('Flashcard atualizado!')
       } else {
@@ -450,6 +466,42 @@ export default function FlashcardsTab() {
     return studyMateriaNames.find(m => m.id === materiaId)
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAttachmentFile(file)
+    setRemoveAttachment(false)
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file)
+      setAttachmentPreview(url)
+    } else {
+      setAttachmentPreview(null)
+    }
+  }
+
+  const clearAttachment = () => {
+    setAttachmentFile(null)
+    setAttachmentPreview(null)
+    if (editingFlashcard?.attachment_url) {
+      setRemoveAttachment(true)
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const renderAttachment = (url: string | null | undefined) => {
+    if (!url) return null
+    const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+    if (isImage) {
+      return <img src={url} alt="Anexo" className="max-w-full max-h-[300px] rounded-lg mt-4 mx-auto" />
+    }
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-4 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm transition-colors">
+        <FileText className="h-4 w-4" />
+        Ver PDF
+      </a>
+    )
+  }
+
   // Render card content for study mode (handles cloze)
   const renderStudyCardContent = (card: Flashcard, flipped: boolean) => {
     if (card.type === 'cloze') {
@@ -538,6 +590,7 @@ export default function FlashcardsTab() {
               <p className="text-xl font-medium whitespace-pre-wrap">
                 {renderStudyCardContent(currentCard, studyFlipped)}
               </p>
+              {currentCard.attachment_url && renderAttachment(currentCard.attachment_url)}
               {!studyFlipped && (
                 <p className="text-sm text-muted-foreground mt-6">
                   Clique ou pressione Espaço para ver a resposta
@@ -694,6 +747,64 @@ export default function FlashcardsTab() {
                       </div>
                     </>
                   )}
+
+                  {/* Attachment input */}
+                  <div className="space-y-2">
+                    <Label>Anexo (opcional)</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2"
+                      >
+                        <Paperclip className="h-4 w-4" />
+                        {attachmentFile ? 'Trocar arquivo' : 'Anexar imagem ou PDF'}
+                      </Button>
+                      {(attachmentFile || (editingFlashcard?.attachment_url && !removeAttachment)) && (
+                        <Button type="button" variant="ghost" size="sm" onClick={clearAttachment}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {/* Preview new file */}
+                    {attachmentFile && (
+                      <div className="border rounded-lg p-2">
+                        {attachmentPreview ? (
+                          <img src={attachmentPreview} alt="Preview" className="max-h-[120px] rounded mx-auto" />
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            {attachmentFile.name}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Show existing attachment when editing */}
+                    {!attachmentFile && editingFlashcard?.attachment_url && !removeAttachment && (
+                      <div className="border rounded-lg p-2">
+                        {editingFlashcard.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                          <img src={editingFlashcard.attachment_url} alt="Anexo atual" className="max-h-[120px] rounded mx-auto" />
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="h-4 w-4" />
+                            Arquivo PDF anexado
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {removeAttachment && (
+                      <p className="text-xs text-amber-600">Anexo será removido ao salvar</p>
+                    )}
+                  </div>
 
                   {flashcardType === 'basico_invertido' && !editingFlashcard && (
                     <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
@@ -1150,6 +1261,21 @@ export default function FlashcardsTab() {
                           <p className="text-sm whitespace-pre-wrap min-h-[60px]">
                             {flippedCards.has(groupKey) ? group.display_resposta : group.display_pergunta}
                           </p>
+                          {firstCard.attachment_url && (
+                            <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                              {firstCard.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <ImageIcon className="h-3 w-3" />
+                                  Imagem anexada
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <FileText className="h-3 w-3" />
+                                  PDF anexado
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {!flippedCards.has(groupKey) && (
                             <p className="text-xs text-muted-foreground mt-3">
                               Clique para ver a resposta
