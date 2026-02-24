@@ -25,6 +25,23 @@ export function useConteudos() {
     setLoading(false)
   }, [supabase])
 
+  const fetchConteudosByMaterias = useCallback(async (materiaIds: string[]) => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('conteudos')
+      .select('*')
+      .in('materia_id', materiaIds)
+      .order('nome')
+
+    if (error) {
+      console.error('Error fetching conteudos by materias:', error)
+    } else {
+      setConteudos(data || [])
+    }
+    setLoading(false)
+    return data || []
+  }, [supabase])
+
   const addConteudo = async (conteudo: Omit<Conteudo, 'id' | 'user_id' | 'created_at'>) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Não autenticado')
@@ -63,5 +80,5 @@ export function useConteudos() {
     setConteudos(prev => prev.filter(c => c.id !== id))
   }
 
-  return { conteudos, loading, fetchConteudos, addConteudo, updateConteudo, deleteConteudo }
+  return { conteudos, loading, fetchConteudos, fetchConteudosByMaterias, addConteudo, updateConteudo, deleteConteudo }
 }

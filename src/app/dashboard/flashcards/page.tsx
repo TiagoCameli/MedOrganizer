@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useFlashcards } from '@/hooks/useFlashcards'
 import { useMaterias } from '@/hooks/useMaterias'
 import { useConteudos } from '@/hooks/useConteudos'
-import { Flashcard } from '@/types'
+import { Flashcard, Conteudo } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -15,13 +15,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, Loader2, X, Filter } from 'lucide-react'
+import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, ChevronLeft, Loader2, X, Filter, Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function FlashcardsPage() {
-  const { flashcards, loading, fetchFlashcards, addFlashcard, updateFlashcard, deleteFlashcard } = useFlashcards()
+  const { flashcards, loading, fetchFlashcards, fetchStudyFlashcards, addFlashcard, updateFlashcard, deleteFlashcard } = useFlashcards()
   const { materias, loading: loadingMaterias } = useMaterias()
-  const { conteudos, fetchConteudos, addConteudo, deleteConteudo } = useConteudos()
+  const { conteudos, fetchConteudos, fetchConteudosByMaterias, addConteudo, deleteConteudo } = useConteudos()
 
   const [selectedSemestres, setSelectedSemestres] = useState<Set<number>>(new Set())
   const [selectedMateria, setSelectedMateria] = useState<string>('')
@@ -46,6 +46,18 @@ export default function FlashcardsPage() {
   const [studyIndex, setStudyIndex] = useState(0)
   const [studyFlipped, setStudyFlipped] = useState(false)
 
+  // Study wizard state
+  const [studyWizardOpen, setStudyWizardOpen] = useState(false)
+  const [studyStep, setStudyStep] = useState<1 | 2 | 3>(1)
+  const [studySemestres, setStudySemestres] = useState<Set<number>>(new Set())
+  const [studyMaterias, setStudyMaterias] = useState<Set<string>>(new Set())
+  const [studyConteudosList, setStudyConteudosList] = useState<Conteudo[]>([])
+  const [studyAllConteudos, setStudyAllConteudos] = useState(true)
+  const [studyConteudos, setStudyConteudos] = useState<Set<string>>(new Set())
+  const [studyLoading, setStudyLoading] = useState(false)
+  // Names of materias selected for study (for display in study mode)
+  const [studyMateriaNames, setStudyMateriaNames] = useState<{ id: string; nome: string; cor: string }[]>([])
+
   // Available semesters from materias
   const semestresDisponiveis = useMemo(() => {
     const set = new Set<number>()
@@ -60,6 +72,31 @@ export default function FlashcardsPage() {
     if (selectedSemestres.size === 0) return materias
     return materias.filter(m => m.semestre != null && selectedSemestres.has(m.semestre))
   }, [materias, selectedSemestres])
+
+  // Wizard: materias filtered by wizard-selected semesters
+  const wizardMaterias = useMemo(() => {
+    if (studySemestres.size === 0) return []
+    return materias.filter(m => m.semestre != null && studySemestres.has(m.semestre))
+  }, [materias, studySemestres])
+
+  // Wizard: conteudos grouped by materia
+  const wizardConteudosGrouped = useMemo(() => {
+    const groups: { materiaId: string; materiaNome: string; materiaCor: string; conteudos: Conteudo[] }[] = []
+    const materiaMap = new Map(materias.map(m => [m.id, m]))
+    const byMateria = new Map<string, Conteudo[]>()
+    for (const c of studyConteudosList) {
+      if (!byMateria.has(c.materia_id)) byMateria.set(c.materia_id, [])
+      byMateria.get(c.materia_id)!.push(c)
+    }
+    for (const [materiaId, conts] of byMateria) {
+      const mat = materiaMap.get(materiaId)
+      if (mat) {
+        groups.push({ materiaId, materiaNome: mat.nome, materiaCor: mat.cor, conteudos: conts })
+      }
+    }
+    groups.sort((a, b) => a.materiaNome.localeCompare(b.materiaNome))
+    return groups
+  }, [studyConteudosList, materias])
 
   const toggleSemestre = (sem: number) => {
     setSelectedSemestres(prev => {
@@ -189,14 +226,99 @@ export default function FlashcardsPage() {
     }
   }
 
-  const enterStudyMode = () => {
-    if (flashcards.length === 0) {
-      toast.error('Nenhum flashcard para estudar')
+  // --- Study Wizard ---
+  const openStudyWizard = () => {
+    setStudySemestres(new Set())
+    setStudyMaterias(new Set())
+    setStudyConteudosList([])
+    setStudyAllConteudos(true)
+    setStudyConteudos(new Set())
+    setStudyStep(1)
+    setStudyWizardOpen(true)
+  }
+
+  const toggleStudySemestre = (sem: number) => {
+    setStudySemestres(prev => {
+      const next = new Set(prev)
+      if (next.has(sem)) next.delete(sem)
+      else next.add(sem)
+      return next
+    })
+  }
+
+  const toggleStudyMateria = (id: string) => {
+    setStudyMaterias(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllStudyMaterias = () => {
+    if (studyMaterias.size === wizardMaterias.length) {
+      setStudyMaterias(new Set())
+    } else {
+      setStudyMaterias(new Set(wizardMaterias.map(m => m.id)))
+    }
+  }
+
+  const toggleStudyConteudo = (id: string) => {
+    setStudyConteudos(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const wizardNext = async () => {
+    if (studyStep === 1) {
+      // Reset materia selection when going to step 2 (semesters may have changed)
+      setStudyMaterias(new Set())
+      setStudyStep(2)
+    } else if (studyStep === 2) {
+      // Fetch conteudos for selected materias
+      setStudyLoading(true)
+      const ids = [...studyMaterias]
+      const data = await fetchConteudosByMaterias(ids)
+      setStudyConteudosList(data)
+      setStudyAllConteudos(true)
+      setStudyConteudos(new Set())
+      setStudyLoading(false)
+      setStudyStep(3)
+    }
+  }
+
+  const wizardBack = () => {
+    if (studyStep === 2) setStudyStep(1)
+    else if (studyStep === 3) setStudyStep(2)
+  }
+
+  const wizardStart = async () => {
+    setStudyLoading(true)
+    const materiaIds = [...studyMaterias]
+    const conteudoIds = studyAllConteudos ? undefined : [...studyConteudos]
+    const data = await fetchStudyFlashcards(materiaIds, conteudoIds)
+
+    if (!data || data.length === 0) {
+      toast.error('Nenhum flashcard encontrado para a seleção')
+      setStudyLoading(false)
       return
     }
+
+    // Store materia info for study mode display
+    setStudyMateriaNames(
+      materias
+        .filter(m => studyMaterias.has(m.id))
+        .map(m => ({ id: m.id, nome: m.nome, cor: m.cor }))
+    )
+
+    setStudyWizardOpen(false)
     setStudyIndex(0)
     setStudyFlipped(false)
     setStudyMode(true)
+    setStudyLoading(false)
   }
 
   const nextStudyCard = () => {
@@ -212,7 +334,13 @@ export default function FlashcardsPage() {
   const selectedMateriaObj = materias.find(m => m.id === selectedMateria)
   const getConteudoNome = (conteudoId: string | null) => {
     if (!conteudoId) return null
-    return conteudos.find(c => c.id === conteudoId)?.nome || null
+    // Check both regular conteudos and study conteudos list
+    const found = conteudos.find(c => c.id === conteudoId) || studyConteudosList.find(c => c.id === conteudoId)
+    return found?.nome || null
+  }
+
+  const getStudyMateriaNome = (materiaId: string) => {
+    return studyMateriaNames.find(m => m.id === materiaId)
   }
 
   if (loadingMaterias) {
@@ -227,16 +355,14 @@ export default function FlashcardsPage() {
   if (studyMode && flashcards.length > 0) {
     const currentCard = flashcards[studyIndex]
     const conteudoNome = getConteudoNome(currentCard.conteudo_id)
+    const cardMateria = getStudyMateriaNome(currentCard.materia_id)
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Modo Estudo</h1>
             <p className="text-muted-foreground">
-              {selectedMateriaObj?.nome}
-              {selectedConteudo && conteudos.find(c => c.id === selectedConteudo) && (
-                <> — {conteudos.find(c => c.id === selectedConteudo)?.nome}</>
-              )}
+              {studyMateriaNames.map(m => m.nome).join(', ')}
               {' — '}Card {studyIndex + 1} de {flashcards.length}
             </p>
           </div>
@@ -259,10 +385,17 @@ export default function FlashcardsPage() {
         >
           <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-indigo-300 transition-colors">
             <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 flex-wrap justify-center">
                 <Badge variant="secondary">
                   {studyFlipped ? 'Resposta' : 'Pergunta'}
                 </Badge>
+                {cardMateria && (
+                  <Badge
+                    style={{ backgroundColor: cardMateria.cor, color: '#fff' }}
+                  >
+                    {cardMateria.nome}
+                  </Badge>
+                )}
                 {conteudoNome && (
                   <Badge variant="outline">{conteudoNome}</Badge>
                 )}
@@ -309,8 +442,8 @@ export default function FlashcardsPage() {
           <p className="text-muted-foreground">Crie e estude seus flashcards por matéria</p>
         </div>
         <div className="flex gap-2">
-          {selectedMateria && flashcards.length > 0 && (
-            <Button variant="outline" onClick={enterStudyMode}>
+          {materias.length > 0 && (
+            <Button variant="outline" onClick={openStudyWizard}>
               <Brain className="mr-2 h-4 w-4" /> Modo Estudo
             </Button>
           )}
@@ -368,6 +501,250 @@ export default function FlashcardsPage() {
           )}
         </div>
       </div>
+
+      {/* Study Wizard Dialog */}
+      <Dialog open={studyWizardOpen} onOpenChange={setStudyWizardOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Modo Estudo</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Etapa {studyStep} de 3
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step indicator */}
+          <div className="flex gap-1">
+            {[1, 2, 3].map(s => (
+              <div
+                key={s}
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  s <= studyStep ? 'bg-indigo-600' : 'bg-muted'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Step 1: Semestres */}
+          {studyStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Selecione os semestres</Label>
+                <p className="text-xs text-muted-foreground mt-1">Escolha um ou mais semestres para estudar</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {semestresDisponiveis.map(sem => (
+                  <button
+                    key={sem}
+                    onClick={() => toggleStudySemestre(sem)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${
+                      studySemestres.has(sem)
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-background text-foreground border-border hover:border-indigo-300'
+                    }`}
+                  >
+                    {sem}º Semestre
+                  </button>
+                ))}
+              </div>
+              {semestresDisponiveis.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum semestre disponível. Configure semestres nas matérias.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Matérias */}
+          {studyStep === 2 && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Selecione as matérias</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {wizardMaterias.length} matéria{wizardMaterias.length !== 1 ? 's' : ''} encontrada{wizardMaterias.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              {wizardMaterias.length > 1 && (
+                <button
+                  onClick={toggleAllStudyMaterias}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                    studyMaterias.size === wizardMaterias.length
+                      ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-600 text-indigo-700 dark:text-indigo-300'
+                      : 'border-border hover:border-indigo-300'
+                  }`}
+                >
+                  <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                    studyMaterias.size === wizardMaterias.length
+                      ? 'bg-indigo-600 border-indigo-600'
+                      : 'border-muted-foreground'
+                  }`}>
+                    {studyMaterias.size === wizardMaterias.length && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  Selecionar Todos
+                </button>
+              )}
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {wizardMaterias.map(mat => (
+                  <button
+                    key={mat.id}
+                    onClick={() => toggleStudyMateria(mat.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm ${
+                      studyMaterias.has(mat.id)
+                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
+                        : 'border-border hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      studyMaterias.has(mat.id)
+                        ? 'bg-indigo-600 border-indigo-600'
+                        : 'border-muted-foreground'
+                    }`}>
+                      {studyMaterias.has(mat.id) && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                    <div
+                      className="h-3 w-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: mat.cor }}
+                    />
+                    <span className="text-left">{mat.nome}</span>
+                    {mat.semestre != null && (
+                      <span className="text-xs text-muted-foreground ml-auto">{mat.semestre}º sem</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Conteúdos */}
+          {studyStep === 3 && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Selecione os conteúdos</Label>
+                <p className="text-xs text-muted-foreground mt-1">Estude todos ou selecione conteúdos específicos</p>
+              </div>
+
+              {studyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                </div>
+              ) : (
+                <>
+                  {/* Toggle all */}
+                  <button
+                    onClick={() => {
+                      setStudyAllConteudos(!studyAllConteudos)
+                      if (!studyAllConteudos) setStudyConteudos(new Set())
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
+                      studyAllConteudos
+                        ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-600 text-indigo-700 dark:text-indigo-300'
+                        : 'border-border hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      studyAllConteudos
+                        ? 'bg-indigo-600 border-indigo-600'
+                        : 'border-muted-foreground'
+                    }`}>
+                      {studyAllConteudos && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                    Todos os conteúdos
+                  </button>
+
+                  {!studyAllConteudos && (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                      {wizardConteudosGrouped.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhum conteúdo cadastrado para as matérias selecionadas.
+                        </p>
+                      ) : (
+                        wizardConteudosGrouped.map(group => (
+                          <div key={group.materiaId}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <div
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: group.materiaCor }}
+                              />
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                {group.materiaNome}
+                              </span>
+                            </div>
+                            <div className="space-y-1 ml-4">
+                              {group.conteudos.map(c => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => toggleStudyConteudo(c.id)}
+                                  className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg border transition-colors text-sm ${
+                                    studyConteudos.has(c.id)
+                                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
+                                      : 'border-border hover:border-indigo-300'
+                                  }`}
+                                >
+                                  <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    studyConteudos.has(c.id)
+                                      ? 'bg-indigo-600 border-indigo-600'
+                                      : 'border-muted-foreground'
+                                  }`}>
+                                    {studyConteudos.has(c.id) && <Check className="h-2.5 w-2.5 text-white" />}
+                                  </div>
+                                  {c.nome}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Wizard navigation */}
+          <div className="flex justify-between pt-2">
+            <Button
+              variant="outline"
+              onClick={studyStep === 1 ? () => setStudyWizardOpen(false) : wizardBack}
+            >
+              {studyStep === 1 ? (
+                'Cancelar'
+              ) : (
+                <><ChevronLeft className="mr-1 h-4 w-4" /> Voltar</>
+              )}
+            </Button>
+
+            {studyStep < 3 ? (
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={
+                  (studyStep === 1 && studySemestres.size === 0) ||
+                  (studyStep === 2 && studyMaterias.size === 0)
+                }
+                onClick={wizardNext}
+              >
+                Próximo <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={studyLoading || (!studyAllConteudos && studyConteudos.size === 0)}
+                onClick={wizardStart}
+              >
+                {studyLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Brain className="mr-2 h-4 w-4" />
+                )}
+                Começar
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {materias.length === 0 ? (
         <Card>

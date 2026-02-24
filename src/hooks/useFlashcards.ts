@@ -31,6 +31,25 @@ export function useFlashcards() {
     setLoading(false)
   }, [supabase])
 
+  const fetchStudyFlashcards = useCallback(async (materiaIds: string[], conteudoIds?: string[]) => {
+    setLoading(true)
+    let query = supabase.from('flashcards').select('*').in('materia_id', materiaIds).order('created_at', { ascending: false })
+
+    if (conteudoIds && conteudoIds.length > 0) {
+      query = query.in('conteudo_id', conteudoIds)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching study flashcards:', error)
+    } else {
+      setFlashcards(data || [])
+    }
+    setLoading(false)
+    return data || []
+  }, [supabase])
+
   const addFlashcard = async (flashcard: Omit<Flashcard, 'id' | 'user_id' | 'created_at'>) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Não autenticado')
@@ -69,5 +88,5 @@ export function useFlashcards() {
     setFlashcards(prev => prev.filter(f => f.id !== id))
   }
 
-  return { flashcards, loading, fetchFlashcards, addFlashcard, updateFlashcard, deleteFlashcard }
+  return { flashcards, loading, fetchFlashcards, fetchStudyFlashcards, addFlashcard, updateFlashcard, deleteFlashcard }
 }
