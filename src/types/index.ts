@@ -22,14 +22,13 @@ export interface Horario {
 export interface Evento {
   id: string
   user_id: string
-  materia_id: string
+  materia_ids: string[]
   titulo: string
   tipo: 'prova' | 'trabalho' | 'tarefa'
   descricao: string | null
   data_entrega: string
   concluido: boolean
   created_at: string
-  materia?: Materia
 }
 
 export interface Semestre {

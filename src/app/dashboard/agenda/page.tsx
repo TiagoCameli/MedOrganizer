@@ -73,15 +73,19 @@ export default function AgendaPage() {
   // Form state
   const [titulo, setTitulo] = useState('')
   const [tipo, setTipo] = useState<string>('prova')
-  const [materiaId, setMateriaId] = useState('')
+  const [materiaIds, setMateriaIds] = useState<string[]>([])
   const [dataEntrega, setDataEntrega] = useState('')
   const [descricao, setDescricao] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const toggleMateriaId = (id: string) => {
+    setMateriaIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id])
+  }
+
   const resetForm = () => {
     setTitulo('')
     setTipo('prova')
-    setMateriaId('')
+    setMateriaIds([])
     setDataEntrega('')
     setDescricao('')
     setEditingEvento(null)
@@ -91,7 +95,7 @@ export default function AgendaPage() {
     setEditingEvento(evento)
     setTitulo(evento.titulo)
     setTipo(evento.tipo)
-    setMateriaId(evento.materia_id)
+    setMateriaIds(evento.materia_ids)
     setDataEntrega(evento.data_entrega.slice(0, 16))
     setDescricao(evento.descricao || '')
     setDialogOpen(true)
@@ -99,7 +103,7 @@ export default function AgendaPage() {
 
   const handleSave = async () => {
     if (!titulo.trim()) { toast.error('Título é obrigatório'); return }
-    if (!materiaId) { toast.error('Selecione uma matéria'); return }
+    if (materiaIds.length === 0) { toast.error('Selecione pelo menos uma matéria'); return }
     if (!dataEntrega) { toast.error('Data de entrega é obrigatória'); return }
 
     setSaving(true)
@@ -107,7 +111,7 @@ export default function AgendaPage() {
       const data = {
         titulo,
         tipo: tipo as Evento['tipo'],
-        materia_id: materiaId,
+        materia_ids: materiaIds,
         data_entrega: new Date(dataEntrega).toISOString(),
         descricao: descricao || null,
         concluido: editingEvento?.concluido ?? false,
@@ -209,7 +213,7 @@ export default function AgendaPage() {
   const filteredEventos = useMemo(() => {
     return eventos.filter(e => {
       if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false
-      if (filtroMateria !== 'todas' && e.materia_id !== filtroMateria) return false
+      if (filtroMateria !== 'todas' && !e.materia_ids.includes(filtroMateria)) return false
       return true
     })
   }, [eventos, filtroTipo, filtroMateria])
@@ -293,20 +297,19 @@ export default function AgendaPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Matéria *</Label>
-                  <Select value={materiaId} onValueChange={setMateriaId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      {materias.map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          <span className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: m.cor }} />
-                            {m.nome}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Matéria(s) * <span className="text-muted-foreground font-normal text-xs">(selecione pelo menos uma)</span></Label>
+                  <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
+                    {materias.map(m => (
+                      <label key={m.id} className="flex items-center gap-2 cursor-pointer rounded-md p-1.5 hover:bg-muted/50">
+                        <Checkbox
+                          checked={materiaIds.includes(m.id)}
+                          onCheckedChange={() => toggleMateriaId(m.id)}
+                        />
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: m.cor }} />
+                        <span className="text-sm truncate">{m.nome}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -395,12 +398,12 @@ export default function AgendaPage() {
                   )}
                   <div className="space-y-0.5">
                     {dayEventos.slice(0, 3).map(e => {
-                      const materia = materias.find(m => m.id === e.materia_id)
+                      const firstMateria = materias.find(m => m.id === e.materia_ids[0])
                       return (
                         <div
                           key={e.id}
                           className={`text-[10px] px-1 py-0.5 rounded truncate cursor-pointer ${e.concluido ? 'line-through opacity-60' : ''}`}
-                          style={{ backgroundColor: materia?.cor + '30', color: materia?.cor }}
+                          style={{ backgroundColor: (firstMateria?.cor || '#6366f1') + '30', color: firstMateria?.cor || '#6366f1' }}
                           onClick={() => openEdit(e)}
                           title={`${TIPO_LABELS[e.tipo]}: ${e.titulo}`}
                         >
@@ -432,7 +435,7 @@ export default function AgendaPage() {
         ) : (
           <div className="space-y-2">
             {upcomingEventos.map(evento => {
-              const materia = materias.find(m => m.id === evento.materia_id)
+              const eventoMaterias = materias.filter(m => evento.materia_ids.includes(m.id))
               return (
                 <Card key={evento.id}>
                   <CardContent className="flex items-center gap-4 p-4">
@@ -440,7 +443,11 @@ export default function AgendaPage() {
                       checked={evento.concluido}
                       onCheckedChange={(checked) => toggleConcluido(evento.id, checked as boolean)}
                     />
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: materia?.cor }} />
+                    <div className="flex -space-x-1 flex-shrink-0">
+                      {eventoMaterias.map(m => (
+                        <div key={m.id} className="w-3 h-3 rounded-full border border-background" style={{ backgroundColor: m.cor }} title={m.nome} />
+                      ))}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`font-medium ${evento.concluido ? 'line-through text-muted-foreground' : ''}`}>
@@ -451,7 +458,7 @@ export default function AgendaPage() {
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {materia?.nome} — {format(new Date(evento.data_entrega), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {eventoMaterias.map(m => m.nome).join(', ')} — {format(new Date(evento.data_entrega), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -481,7 +488,7 @@ export default function AgendaPage() {
           </h2>
           <div className="space-y-2">
             {completedEventos.map(evento => {
-              const materia = materias.find(m => m.id === evento.materia_id)
+              const eventoMaterias = materias.filter(m => evento.materia_ids.includes(m.id))
               return (
                 <Card key={evento.id} className="opacity-75">
                   <CardContent className="flex items-center gap-4 p-4">
@@ -489,7 +496,11 @@ export default function AgendaPage() {
                       checked={evento.concluido}
                       onCheckedChange={(checked) => toggleConcluido(evento.id, checked as boolean)}
                     />
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: materia?.cor }} />
+                    <div className="flex -space-x-1 flex-shrink-0">
+                      {eventoMaterias.map(m => (
+                        <div key={m.id} className="w-3 h-3 rounded-full border border-background" style={{ backgroundColor: m.cor }} title={m.nome} />
+                      ))}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium line-through text-muted-foreground">
@@ -500,7 +511,7 @@ export default function AgendaPage() {
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {materia?.nome} — {format(new Date(evento.data_entrega), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {eventoMaterias.map(m => m.nome).join(', ')} — {format(new Date(evento.data_entrega), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

@@ -98,7 +98,7 @@ export default function MateriasPage() {
   const getProximaProva = (materiaId: string) => {
     const now = new Date()
     const proxima = eventos
-      .filter(e => e.materia_id === materiaId && e.tipo === 'prova' && new Date(e.data_entrega) > now)
+      .filter(e => e.materia_ids.includes(materiaId) && e.tipo === 'prova' && new Date(e.data_entrega) > now)
       .sort((a, b) => new Date(a.data_entrega).getTime() - new Date(b.data_entrega).getTime())[0]
     if (!proxima) return null
     return new Date(proxima.data_entrega).toLocaleDateString('pt-BR')

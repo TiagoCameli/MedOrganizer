@@ -13,7 +13,7 @@ export function useEventos() {
     setLoading(true)
     const { data, error } = await supabase
       .from('eventos')
-      .select('*, materia:materias(*)')
+      .select('*')
       .order('data_entrega')
 
     if (error) {
@@ -28,14 +28,14 @@ export function useEventos() {
     fetchEventos()
   }, [fetchEventos])
 
-  const addEvento = async (evento: Omit<Evento, 'id' | 'user_id' | 'created_at' | 'materia'>) => {
+  const addEvento = async (evento: Omit<Evento, 'id' | 'user_id' | 'created_at'>) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Não autenticado')
 
     const { data, error } = await supabase
       .from('eventos')
       .insert({ ...evento, user_id: user.id })
-      .select('*, materia:materias(*)')
+      .select()
       .single()
 
     if (error) throw error
@@ -43,12 +43,12 @@ export function useEventos() {
     return data
   }
 
-  const updateEvento = async (id: string, updates: Partial<Omit<Evento, 'id' | 'user_id' | 'created_at' | 'materia'>>) => {
+  const updateEvento = async (id: string, updates: Partial<Omit<Evento, 'id' | 'user_id' | 'created_at'>>) => {
     const { data, error } = await supabase
       .from('eventos')
       .update(updates)
       .eq('id', id)
-      .select('*, materia:materias(*)')
+      .select()
       .single()
 
     if (error) throw error

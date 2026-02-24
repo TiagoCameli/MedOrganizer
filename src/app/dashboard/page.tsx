@@ -201,7 +201,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {upcomingEvents.map(e => {
-                  const materia = materias.find(m => m.id === e.materia_id)
+                  const eventoMaterias = materias.filter(m => e.materia_ids.includes(m.id))
                   const days = differenceInDays(new Date(e.data_entrega), now)
                   const isUrgent = days <= 3
                   return (
@@ -217,14 +217,18 @@ export default function DashboardPage() {
                         checked={e.concluido}
                         onCheckedChange={(checked) => toggleConcluido(e.id, checked as boolean)}
                       />
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: materia?.cor }} />
+                      <div className="flex -space-x-1 flex-shrink-0">
+                        {eventoMaterias.map(m => (
+                          <div key={m.id} className="w-3 h-3 rounded-full border border-background" style={{ backgroundColor: m.cor }} title={m.nome} />
+                        ))}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm truncate">{e.titulo}</span>
                           <Badge variant="secondary" className="text-xs">{TIPO_LABELS[e.tipo]}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {materia?.nome} — {format(new Date(e.data_entrega), "dd/MM 'às' HH:mm")}
+                          {eventoMaterias.map(m => m.nome).join(', ')} — {format(new Date(e.data_entrega), "dd/MM 'às' HH:mm")}
                         </p>
                       </div>
                       <span className={`text-xs font-medium flex-shrink-0 ${isUrgent ? '' : 'text-muted-foreground'}`}>
@@ -251,13 +255,17 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               {urgentEvents.map(e => {
-                const materia = materias.find(m => m.id === e.materia_id)
+                const eventoMaterias = materias.filter(m => e.materia_ids.includes(m.id))
                 return (
                   <div key={e.id} className="flex items-center justify-between gap-4 text-sm">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: materia?.cor }} />
+                      <div className="flex -space-x-1 flex-shrink-0">
+                        {eventoMaterias.map(m => (
+                          <div key={m.id} className="w-2 h-2 rounded-full border border-background" style={{ backgroundColor: m.cor }} />
+                        ))}
+                      </div>
                       <span className="font-medium truncate">{e.titulo}</span>
-                      <span className="text-muted-foreground truncate">({materia?.nome})</span>
+                      <span className="text-muted-foreground truncate">({eventoMaterias.map(m => m.nome).join(', ')})</span>
                     </div>
                     <Badge variant="destructive" className="flex-shrink-0">
                       {getCountdownText(e.data_entrega)}
