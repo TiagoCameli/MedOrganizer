@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useFlashcards } from '@/hooks/useFlashcards'
 import { useMaterias } from '@/hooks/useMaterias'
 import { Flashcard } from '@/types'
@@ -11,13 +11,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, Loader2, X } from 'lucide-react'
+import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, Loader2, X, Filter } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function FlashcardsPage() {
   const { flashcards, loading, fetchFlashcards, addFlashcard, updateFlashcard, deleteFlashcard } = useFlashcards()
   const { materias, loading: loadingMaterias } = useMaterias()
 
+  const [selectedSemestres, setSelectedSemestres] = useState<Set<number>>(new Set())
   const [selectedMateria, setSelectedMateria] = useState<string>('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingFlashcard, setEditingFlashcard] = useState<Flashcard | null>(null)
@@ -33,12 +34,42 @@ export default function FlashcardsPage() {
   const [studyIndex, setStudyIndex] = useState(0)
   const [studyFlipped, setStudyFlipped] = useState(false)
 
-  // Select first materia when loaded
-  useEffect(() => {
-    if (materias.length > 0 && !selectedMateria) {
-      setSelectedMateria(materias[0].id)
+  // Available semesters from materias
+  const semestresDisponiveis = useMemo(() => {
+    const set = new Set<number>()
+    for (const m of materias) {
+      if (m.semestre != null) set.add(m.semestre)
     }
-  }, [materias, selectedMateria])
+    return [...set].sort((a, b) => a - b)
+  }, [materias])
+
+  // Filtered materias by selected semesters
+  const materiasFiltradas = useMemo(() => {
+    if (selectedSemestres.size === 0) return materias
+    return materias.filter(m => m.semestre != null && selectedSemestres.has(m.semestre))
+  }, [materias, selectedSemestres])
+
+  const toggleSemestre = (sem: number) => {
+    setSelectedSemestres(prev => {
+      const next = new Set(prev)
+      if (next.has(sem)) {
+        next.delete(sem)
+      } else {
+        next.add(sem)
+      }
+      return next
+    })
+  }
+
+  // Select first materia from filtered list when filter changes or on load
+  useEffect(() => {
+    if (materiasFiltradas.length > 0) {
+      const currentStillVisible = materiasFiltradas.some(m => m.id === selectedMateria)
+      if (!currentStillVisible) {
+        setSelectedMateria(materiasFiltradas[0].id)
+      }
+    }
+  }, [materiasFiltradas, selectedMateria])
 
   // Fetch flashcards when materia changes
   useEffect(() => {
@@ -269,9 +300,39 @@ export default function FlashcardsPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
+          {/* Filtro de semestres */}
+          {semestresDisponiveis.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Semestre:</span>
+              {semestresDisponiveis.map((sem) => (
+                <button
+                  key={sem}
+                  onClick={() => toggleSemestre(sem)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    selectedSemestres.has(sem)
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                  }`}
+                >
+                  {sem}º
+                </button>
+              ))}
+              {selectedSemestres.size > 0 && (
+                <button
+                  onClick={() => setSelectedSemestres(new Set())}
+                  className="px-2 py-1 rounded-full text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          )}
+
         <Tabs value={selectedMateria} onValueChange={setSelectedMateria}>
           <TabsList className="flex flex-wrap h-auto gap-1">
-            {materias.map((materia) => (
+            {materiasFiltradas.map((materia) => (
               <TabsTrigger
                 key={materia.id}
                 value={materia.id}
@@ -286,7 +347,7 @@ export default function FlashcardsPage() {
             ))}
           </TabsList>
 
-          {materias.map((materia) => (
+          {materiasFiltradas.map((materia) => (
             <TabsContent key={materia.id} value={materia.id}>
               {loading ? (
                 <div className="flex items-center justify-center h-32">
@@ -341,6 +402,7 @@ export default function FlashcardsPage() {
             </TabsContent>
           ))}
         </Tabs>
+        </>
       )}
     </div>
   )
