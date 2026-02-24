@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useStudySessions } from '@/hooks/useStudySessions'
+import { usePomodoroTimer } from '@/components/PomodoroProvider'
 import { Materia, StudyGoal } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,9 +88,18 @@ interface GradeEstudoProps {
 export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   const {
     sessions, goals, loading,
-    fetchSessions, addSession,
+    fetchSessions,
     upsertGoal, deleteGoal
   } = useStudySessions()
+
+  const {
+    timerMateriaId, setTimerMateriaId,
+    focusMinutes, setFocusMinutes,
+    breakMinutes, setBreakMinutes,
+    isRunning, isBreak, secondsLeft,
+    alarmType, setAlarmType,
+    startTimer, pauseTimer, resetTimer, stopAndLog, startBreakEarly,
+  } = usePomodoroTimer()
 
   // --- Semester filter ---
   const semestresDisponiveis = useMemo(() => {
@@ -139,197 +149,27 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   const monthStartStr = useMemo(() => format(monthStart, 'yyyy-MM-dd'), [monthStart])
   const monthEndStr = useMemo(() => format(monthEnd, 'yyyy-MM-dd'), [monthEnd])
 
-  useEffect(() => {
+  const refetchSessions = useCallback(() => {
     fetchSessions(monthStartStr, monthEndStr)
   }, [fetchSessions, monthStartStr, monthEndStr])
 
-  // ========================================
-  // Pomodoro Timer
-  // ========================================
-  const [timerMateriaId, setTimerMateriaId] = useState<string>('')
-  const [focusMinutes, setFocusMinutes] = useState(25)
-  const [breakMinutes, setBreakMinutes] = useState(5)
-  const [isRunning, setIsRunning] = useState(false)
-  const [isBreak, setIsBreak] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60)
-  const [alarmType, setAlarmType] = useState<'som' | 'visual' | 'ambos'>('som')
-  const [showFlash, setShowFlash] = useState(false)
-  const startTimeRef = useRef<number | null>(null)
-  const targetEndRef = useRef<number | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    refetchSessions()
+  }, [refetchSessions])
+
+  // Listen for session additions from PomodoroProvider
+  useEffect(() => {
+    const handler = () => refetchSessions()
+    window.addEventListener('pomodoroSessionAdded', handler)
+    return () => window.removeEventListener('pomodoroSessionAdded', handler)
+  }, [refetchSessions])
 
   // Clear timer materia when semester changes and current selection is no longer valid
   useEffect(() => {
     if (timerMateriaId && !materiaIdsFiltradas.has(timerMateriaId) && !isRunning) {
       setTimerMateriaId('')
     }
-  }, [materiaIdsFiltradas, timerMateriaId, isRunning])
-
-  const startTimer = useCallback(() => {
-    if (!timerMateriaId) {
-      toast.error('Selecione uma matéria antes de iniciar')
-      return
-    }
-    const nowMs = Date.now()
-    startTimeRef.current = startTimeRef.current || nowMs
-    targetEndRef.current = nowMs + secondsLeft * 1000
-    setIsRunning(true)
-  }, [timerMateriaId, secondsLeft])
-
-  const pauseTimer = useCallback(() => {
-    setIsRunning(false)
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
-
-  const resetTimer = useCallback(() => {
-    setIsRunning(false)
-    setIsBreak(false)
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    setSecondsLeft(focusMinutes * 60)
-    startTimeRef.current = null
-    targetEndRef.current = null
-  }, [focusMinutes])
-
-  const triggerAlarm = useCallback(() => {
-    if (alarmType === 'som' || alarmType === 'ambos') {
-      const ctx = new AudioContext()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 800
-      gain.gain.value = 0.3
-      osc.start()
-      osc.stop(ctx.currentTime + 1.5)
-    }
-    if (alarmType === 'visual' || alarmType === 'ambos') {
-      setShowFlash(true)
-      setTimeout(() => setShowFlash(false), 2000)
-    }
-  }, [alarmType])
-
-  // Timer tick effect
-  useEffect(() => {
-    if (!isRunning) return
-
-    intervalRef.current = setInterval(() => {
-      const remaining = Math.max(
-        0,
-        Math.round((targetEndRef.current! - Date.now()) / 1000)
-      )
-      setSecondsLeft(remaining)
-
-      if (remaining <= 0) {
-        clearInterval(intervalRef.current!)
-        intervalRef.current = null
-        setIsRunning(false)
-
-        if (!isBreak) {
-          // Focus completed — log session
-          const durationMs = Date.now() - startTimeRef.current!
-          const durationMin = Math.round(durationMs / 60000)
-          if (durationMin > 0 && timerMateriaId) {
-            addSession({
-              materia_id: timerMateriaId,
-              duration_minutes: durationMin,
-              studied_at: format(new Date(), 'yyyy-MM-dd'),
-            })
-            toast.success(`Sessão de ${durationMin} min registrada!`)
-          }
-          triggerAlarm()
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('Pomodoro concluído!', { body: 'Hora do intervalo.' })
-          }
-          // Auto-start break
-          setIsBreak(true)
-          const breakSecs = breakMinutes * 60
-          setSecondsLeft(breakSecs)
-          startTimeRef.current = Date.now()
-          targetEndRef.current = Date.now() + breakSecs * 1000
-          setIsRunning(true)
-        } else {
-          // Break completed
-          triggerAlarm()
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('Intervalo terminado!', { body: 'Volta a estudar!' })
-          }
-          setIsBreak(false)
-          setSecondsLeft(focusMinutes * 60)
-          startTimeRef.current = null
-          targetEndRef.current = null
-        }
-      }
-    }, 250)
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [isRunning, isBreak, focusMinutes, breakMinutes, timerMateriaId, addSession, triggerAlarm])
-
-  // Manual stop: log partial session
-  const stopAndLog = useCallback(() => {
-    if (startTimeRef.current && timerMateriaId && !isBreak) {
-      const durationMs = Date.now() - startTimeRef.current
-      const durationMin = Math.round(durationMs / 60000)
-      if (durationMin > 0) {
-        addSession({
-          materia_id: timerMateriaId,
-          duration_minutes: durationMin,
-          studied_at: format(new Date(), 'yyyy-MM-dd'),
-        })
-        toast.success(`Sessão de ${durationMin} min registrada!`)
-      } else {
-        toast.info('Sessão muito curta para registrar')
-      }
-    }
-    resetTimer()
-  }, [timerMateriaId, isBreak, addSession, resetTimer])
-
-  const startBreakEarly = useCallback(() => {
-    if (startTimeRef.current && timerMateriaId) {
-      const durationMs = Date.now() - startTimeRef.current
-      const durationMin = Math.round(durationMs / 60000)
-      if (durationMin > 0) {
-        addSession({
-          materia_id: timerMateriaId,
-          duration_minutes: durationMin,
-          studied_at: format(new Date(), 'yyyy-MM-dd'),
-        })
-        toast.success(`Sessão de ${durationMin} min registrada!`)
-      }
-    }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    setIsRunning(false)
-    setIsBreak(true)
-    const breakSecs = breakMinutes * 60
-    setSecondsLeft(breakSecs)
-    startTimeRef.current = Date.now()
-    targetEndRef.current = Date.now() + breakSecs * 1000
-    setIsRunning(true)
-  }, [timerMateriaId, breakMinutes, addSession])
-
-  // Request notification permission
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-  }, [])
-
-  // Update secondsLeft when focusMinutes changes (only when not running)
-  useEffect(() => {
-    if (!isRunning && !isBreak) {
-      setSecondsLeft(focusMinutes * 60)
-    }
-  }, [focusMinutes, isRunning, isBreak])
+  }, [materiaIdsFiltradas, timerMateriaId, isRunning, setTimerMateriaId])
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60)
@@ -510,10 +350,6 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
 
   return (
     <div className="space-y-6">
-      {showFlash && (
-        <div className="fixed inset-0 z-50 pointer-events-none animate-pulse bg-indigo-500/20" />
-      )}
-
       {/* Semester filter */}
       {semestresDisponiveis.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
