@@ -3,12 +3,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useFlashcards } from '@/hooks/useFlashcards'
 import { useMaterias } from '@/hooks/useMaterias'
+import { useConteudos } from '@/hooks/useConteudos'
 import { Flashcard } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Brain, Plus, Pencil, Trash2, RotateCcw, ChevronRight, Loader2, X, Filter } from 'lucide-react'
@@ -17,9 +21,11 @@ import { toast } from 'sonner'
 export default function FlashcardsPage() {
   const { flashcards, loading, fetchFlashcards, addFlashcard, updateFlashcard, deleteFlashcard } = useFlashcards()
   const { materias, loading: loadingMaterias } = useMaterias()
+  const { conteudos, fetchConteudos, addConteudo, deleteConteudo } = useConteudos()
 
   const [selectedSemestres, setSelectedSemestres] = useState<Set<number>>(new Set())
   const [selectedMateria, setSelectedMateria] = useState<string>('')
+  const [selectedConteudo, setSelectedConteudo] = useState<string>('') // '' = Todos
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingFlashcard, setEditingFlashcard] = useState<Flashcard | null>(null)
   const [saving, setSaving] = useState(false)
@@ -28,6 +34,12 @@ export default function FlashcardsPage() {
   // Form state
   const [pergunta, setPergunta] = useState('')
   const [resposta, setResposta] = useState('')
+  const [formConteudoId, setFormConteudoId] = useState<string>('none')
+
+  // New conteudo popover state
+  const [newConteudoOpen, setNewConteudoOpen] = useState(false)
+  const [newConteudoNome, setNewConteudoNome] = useState('')
+  const [savingConteudo, setSavingConteudo] = useState(false)
 
   // Study mode state
   const [studyMode, setStudyMode] = useState(false)
@@ -71,17 +83,26 @@ export default function FlashcardsPage() {
     }
   }, [materiasFiltradas, selectedMateria])
 
-  // Fetch flashcards when materia changes
+  // Fetch conteúdos when materia changes
   useEffect(() => {
     if (selectedMateria) {
-      fetchFlashcards(selectedMateria)
+      fetchConteudos(selectedMateria)
+      setSelectedConteudo('')
+    }
+  }, [selectedMateria, fetchConteudos])
+
+  // Fetch flashcards when materia or conteudo filter changes
+  useEffect(() => {
+    if (selectedMateria) {
+      fetchFlashcards(selectedMateria, selectedConteudo || undefined)
       setFlippedCards(new Set())
     }
-  }, [selectedMateria, fetchFlashcards])
+  }, [selectedMateria, selectedConteudo, fetchFlashcards])
 
   const resetForm = () => {
     setPergunta('')
     setResposta('')
+    setFormConteudoId('none')
     setEditingFlashcard(null)
   }
 
@@ -89,6 +110,7 @@ export default function FlashcardsPage() {
     setEditingFlashcard(flashcard)
     setPergunta(flashcard.pergunta)
     setResposta(flashcard.resposta)
+    setFormConteudoId(flashcard.conteudo_id || 'none')
     setDialogOpen(true)
   }
 
@@ -111,7 +133,12 @@ export default function FlashcardsPage() {
 
     setSaving(true)
     try {
-      const data = { pergunta, resposta, materia_id: selectedMateria }
+      const data = {
+        pergunta,
+        resposta,
+        materia_id: selectedMateria,
+        conteudo_id: formConteudoId === 'none' ? null : formConteudoId,
+      }
       if (editingFlashcard) {
         await updateFlashcard(editingFlashcard.id, data)
         toast.success('Flashcard atualizado!')
@@ -132,6 +159,31 @@ export default function FlashcardsPage() {
     try {
       await deleteFlashcard(id)
       toast.success('Flashcard excluído!')
+    } catch (error: unknown) {
+      toast.error('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+    }
+  }
+
+  const handleAddConteudo = async () => {
+    if (!newConteudoNome.trim()) return
+    setSavingConteudo(true)
+    try {
+      await addConteudo({ materia_id: selectedMateria, nome: newConteudoNome.trim() })
+      setNewConteudoNome('')
+      setNewConteudoOpen(false)
+      toast.success('Conteúdo criado!')
+    } catch (error: unknown) {
+      toast.error('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+    }
+    setSavingConteudo(false)
+  }
+
+  const handleDeleteConteudo = async (id: string, nome: string) => {
+    if (!confirm(`Excluir o conteúdo "${nome}"? Os flashcards associados ficarão sem conteúdo.`)) return
+    try {
+      await deleteConteudo(id)
+      if (selectedConteudo === id) setSelectedConteudo('')
+      toast.success('Conteúdo excluído!')
     } catch (error: unknown) {
       toast.error('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
     }
@@ -158,6 +210,10 @@ export default function FlashcardsPage() {
   }
 
   const selectedMateriaObj = materias.find(m => m.id === selectedMateria)
+  const getConteudoNome = (conteudoId: string | null) => {
+    if (!conteudoId) return null
+    return conteudos.find(c => c.id === conteudoId)?.nome || null
+  }
 
   if (loadingMaterias) {
     return (
@@ -170,13 +226,18 @@ export default function FlashcardsPage() {
   // Study mode view
   if (studyMode && flashcards.length > 0) {
     const currentCard = flashcards[studyIndex]
+    const conteudoNome = getConteudoNome(currentCard.conteudo_id)
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Modo Estudo</h1>
             <p className="text-muted-foreground">
-              {selectedMateriaObj?.nome} — Card {studyIndex + 1} de {flashcards.length}
+              {selectedMateriaObj?.nome}
+              {selectedConteudo && conteudos.find(c => c.id === selectedConteudo) && (
+                <> — {conteudos.find(c => c.id === selectedConteudo)?.nome}</>
+              )}
+              {' — '}Card {studyIndex + 1} de {flashcards.length}
             </p>
           </div>
           <Button variant="outline" onClick={() => setStudyMode(false)}>
@@ -198,9 +259,14 @@ export default function FlashcardsPage() {
         >
           <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-indigo-300 transition-colors">
             <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-              <Badge variant="secondary" className="mb-4">
-                {studyFlipped ? 'Resposta' : 'Pergunta'}
-              </Badge>
+              <div className="flex gap-2 mb-4">
+                <Badge variant="secondary">
+                  {studyFlipped ? 'Resposta' : 'Pergunta'}
+                </Badge>
+                {conteudoNome && (
+                  <Badge variant="outline">{conteudoNome}</Badge>
+                )}
+              </div>
               <p className="text-xl font-medium whitespace-pre-wrap">
                 {studyFlipped ? currentCard.resposta : currentCard.pergunta}
               </p>
@@ -260,6 +326,20 @@ export default function FlashcardsPage() {
                   <DialogTitle>{editingFlashcard ? 'Editar Flashcard' : 'Novo Flashcard'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Conteúdo</Label>
+                    <Select value={formConteudoId} onValueChange={setFormConteudoId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione um conteúdo (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {conteudos.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label>Pergunta *</Label>
                     <Textarea
@@ -330,7 +410,7 @@ export default function FlashcardsPage() {
             </div>
           )}
 
-        <Tabs value={selectedMateria} onValueChange={setSelectedMateria}>
+        <Tabs value={selectedMateria} onValueChange={(val) => { setSelectedMateria(val); setSelectedConteudo('') }}>
           <TabsList className="flex flex-wrap h-auto gap-1">
             {materiasFiltradas.map((materia) => (
               <TabsTrigger
@@ -349,6 +429,74 @@ export default function FlashcardsPage() {
 
           {materiasFiltradas.map((materia) => (
             <TabsContent key={materia.id} value={materia.id}>
+              {/* Chips de conteúdo */}
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                <span className="text-sm text-muted-foreground">Conteúdo:</span>
+                <button
+                  onClick={() => setSelectedConteudo('')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    selectedConteudo === ''
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                  }`}
+                >
+                  Todos
+                </button>
+                {conteudos.map((conteudo) => (
+                  <div key={conteudo.id} className="flex items-center group">
+                    <button
+                      onClick={() => setSelectedConteudo(conteudo.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        selectedConteudo === conteudo.id
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                      }`}
+                    >
+                      {conteudo.nome}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteConteudo(conteudo.id, conteudo.nome)}
+                      className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      title="Excluir conteúdo"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <Popover open={newConteudoOpen} onOpenChange={setNewConteudoOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="px-2 py-1 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                      title="Novo conteúdo"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Novo conteúdo</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newConteudoNome}
+                          onChange={(e) => setNewConteudoNome(e.target.value)}
+                          placeholder="Ex: Sistema Nervoso"
+                          className="h-8 text-sm"
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddConteudo() }}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={handleAddConteudo}
+                          disabled={savingConteudo || !newConteudoNome.trim()}
+                        >
+                          {savingConteudo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
@@ -358,45 +506,57 @@ export default function FlashcardsPage() {
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <Brain className="h-10 w-10 text-muted-foreground mb-3" />
                     <p className="text-muted-foreground text-sm text-center">
-                      Nenhum flashcard para {materia.nome}.<br />
-                      Crie seu primeiro flashcard!
+                      {selectedConteudo
+                        ? <>Nenhum flashcard para este conteúdo.<br />Crie seu primeiro flashcard!</>
+                        : <>Nenhum flashcard para {materia.nome}.<br />Crie seu primeiro flashcard!</>
+                      }
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {flashcards.map((flashcard) => (
-                    <Card
-                      key={flashcard.id}
-                      className="cursor-pointer hover:border-indigo-300 transition-colors overflow-hidden"
-                      onClick={() => toggleFlip(flashcard.id)}
-                    >
-                      <div className="h-1.5" style={{ backgroundColor: materia.cor }} />
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {flippedCards.has(flashcard.id) ? 'Resposta' : 'Pergunta'}
-                          </Badge>
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(flashcard)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(flashcard.id)}>
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                  {flashcards.map((flashcard) => {
+                    const conteudoNome = getConteudoNome(flashcard.conteudo_id)
+                    return (
+                      <Card
+                        key={flashcard.id}
+                        className="cursor-pointer hover:border-indigo-300 transition-colors overflow-hidden"
+                        onClick={() => toggleFlip(flashcard.id)}
+                      >
+                        <div className="h-1.5" style={{ backgroundColor: materia.cor }} />
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex gap-1.5 flex-wrap">
+                              <Badge variant="secondary" className="text-xs">
+                                {flippedCards.has(flashcard.id) ? 'Resposta' : 'Pergunta'}
+                              </Badge>
+                              {conteudoNome && (
+                                <Badge variant="outline" className="text-xs">
+                                  {conteudoNome}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(flashcard)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(flashcard.id)}>
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap min-h-[60px]">
-                          {flippedCards.has(flashcard.id) ? flashcard.resposta : flashcard.pergunta}
-                        </p>
-                        {!flippedCards.has(flashcard.id) && (
-                          <p className="text-xs text-muted-foreground mt-3">
-                            Clique para ver a resposta
+                          <p className="text-sm whitespace-pre-wrap min-h-[60px]">
+                            {flippedCards.has(flashcard.id) ? flashcard.resposta : flashcard.pergunta}
                           </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                          {!flippedCards.has(flashcard.id) && (
+                            <p className="text-xs text-muted-foreground mt-3">
+                              Clique para ver a resposta
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               )}
             </TabsContent>

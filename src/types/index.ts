@@ -58,10 +58,19 @@ export interface Feriado {
   created_at: string
 }
 
+export interface Conteudo {
+  id: string
+  user_id: string
+  materia_id: string
+  nome: string
+  created_at: string
+}
+
 export interface Flashcard {
   id: string
   user_id: string
   materia_id: string
+  conteudo_id: string | null
   pergunta: string
   resposta: string
   created_at: string

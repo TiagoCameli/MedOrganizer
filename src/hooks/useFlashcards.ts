@@ -9,12 +9,16 @@ export function useFlashcards() {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  const fetchFlashcards = useCallback(async (materiaId?: string) => {
+  const fetchFlashcards = useCallback(async (materiaId?: string, conteudoId?: string) => {
     setLoading(true)
     let query = supabase.from('flashcards').select('*').order('created_at', { ascending: false })
 
     if (materiaId) {
       query = query.eq('materia_id', materiaId)
+    }
+
+    if (conteudoId) {
+      query = query.eq('conteudo_id', conteudoId)
     }
 
     const { data, error } = await query
