@@ -39,6 +39,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const startTimeRef = useRef<number | null>(null)
   const targetEndRef = useRef<number | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevFocusMinutesRef = useRef(focusMinutes)
 
   const supabase = createClient()
 
@@ -201,10 +202,13 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Update secondsLeft when focusMinutes changes (only when idle)
+  // Update secondsLeft only when focusMinutes actually changes (not on pause)
   useEffect(() => {
-    if (!isRunning && !isBreak) {
-      setSecondsLeft(focusMinutes * 60)
+    if (focusMinutes !== prevFocusMinutesRef.current) {
+      prevFocusMinutesRef.current = focusMinutes
+      if (!isRunning && !isBreak) {
+        setSecondsLeft(focusMinutes * 60)
+      }
     }
   }, [focusMinutes, isRunning, isBreak])
 
