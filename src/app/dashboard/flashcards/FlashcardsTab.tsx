@@ -367,6 +367,13 @@ export default function FlashcardsTab() {
     setStudyLoading(false)
   }
 
+  const exitStudyMode = () => {
+    setStudyMode(false)
+    if (selectedMateria) {
+      fetchFlashcards(selectedMateria, selectedConteudo || undefined)
+    }
+  }
+
   const handleStudyQuality = async (quality: 0 | 3 | 5) => {
     const currentCard = studyCards[studyIndex]
     if (!currentCard || submittingReview) return
@@ -384,7 +391,7 @@ export default function FlashcardsTab() {
         setStudyFlipped(false)
       } else {
         toast.success('Você revisou todos os flashcards!')
-        setStudyMode(false)
+        exitStudyMode()
       }
     } catch (error: unknown) {
       toast.error('Erro ao registrar revisão: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
@@ -455,7 +462,7 @@ export default function FlashcardsTab() {
               {' — '}Card {studyIndex + 1} de {studyCards.length}
             </p>
           </div>
-          <Button variant="outline" onClick={() => setStudyMode(false)}>
+          <Button variant="outline" onClick={exitStudyMode}>
             <X className="mr-2 h-4 w-4" /> Sair
           </Button>
         </div>
