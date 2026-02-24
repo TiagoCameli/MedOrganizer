@@ -50,3 +50,11 @@ export interface Nota {
   peso: number
   created_at: string
 }
+
+export interface Feriado {
+  id: string
+  user_id: string
+  data: string // YYYY-MM-DD
+  descricao: string
+  created_at: string
+}

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useEventos } from '@/hooks/useEventos'
 import { useMaterias } from '@/hooks/useMaterias'
 import { useSemestres } from '@/hooks/useSemestres'
+import { useFeriados } from '@/hooks/useFeriados'
 import { Evento } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter, Settings2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter, Settings2, PartyPopper } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   format,
@@ -49,9 +50,11 @@ export default function AgendaPage() {
   const { eventos, loading, addEvento, updateEvento, deleteEvento, toggleConcluido } = useEventos()
   const { materias } = useMaterias()
   const { semestres, upsertSemestre, deleteSemestre } = useSemestres()
+  const { feriados, addFeriado, deleteFeriado } = useFeriados()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [semDialogOpen, setSemDialogOpen] = useState(false)
+  const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false)
   const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
   const [filtroMateria, setFiltroMateria] = useState<string>('todas')
@@ -61,6 +64,11 @@ export default function AgendaPage() {
   const [semInicio, setSemInicio] = useState('')
   const [semFim, setSemFim] = useState('')
   const [savingSem, setSavingSem] = useState(false)
+
+  // Feriado form state
+  const [feriadoData, setFeriadoData] = useState('')
+  const [feriadoDescricao, setFeriadoDescricao] = useState('')
+  const [savingFeriado, setSavingFeriado] = useState(false)
 
   // Form state
   const [titulo, setTitulo] = useState('')
@@ -165,6 +173,38 @@ export default function AgendaPage() {
     setSemFim(sem.data_fim)
     setSemDialogOpen(true)
   }
+
+  const handleSaveFeriado = async () => {
+    if (!feriadoData) { toast.error('Data é obrigatória'); return }
+    if (!feriadoDescricao.trim()) { toast.error('Descrição é obrigatória'); return }
+
+    setSavingFeriado(true)
+    try {
+      await addFeriado({ data: feriadoData, descricao: feriadoDescricao })
+      toast.success('Feriado adicionado!')
+      setFeriadoDialogOpen(false)
+      setFeriadoData('')
+      setFeriadoDescricao('')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : (error as { message?: string })?.message || 'Erro desconhecido'
+      toast.error('Erro: ' + msg)
+    }
+    setSavingFeriado(false)
+  }
+
+  const handleDeleteFeriado = async (id: string) => {
+    if (!confirm('Remover este feriado?')) return
+    try {
+      await deleteFeriado(id)
+      toast.success('Feriado removido!')
+    } catch {
+      toast.error('Erro ao remover')
+    }
+  }
+
+  const feriadosDates = useMemo(() => {
+    return new Set(feriados.map(f => f.data))
+  }, [feriados])
 
   const filteredEventos = useMemo(() => {
     return eventos.filter(e => {
@@ -396,6 +436,73 @@ export default function AgendaPage() {
         </CardContent>
       </Card>
 
+      {/* Feriados */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <PartyPopper className="h-4 w-4 text-amber-600" />
+              Feriados
+            </CardTitle>
+            <Dialog open={feriadoDialogOpen} onOpenChange={(open) => { setFeriadoDialogOpen(open); if (!open) { setFeriadoData(''); setFeriadoDescricao('') } }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-1 h-3 w-3" /> Adicionar Feriado
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Feriado</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data *</Label>
+                    <Input type="date" value={feriadoData} onChange={(e) => setFeriadoData(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição *</Label>
+                    <Input value={feriadoDescricao} onChange={(e) => setFeriadoDescricao(e.target.value)} placeholder="Ex: Feriado Nacional" />
+                  </div>
+                  <Button onClick={handleSaveFeriado} disabled={savingFeriado} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                    {savingFeriado && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Adicionar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {feriados.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Nenhum feriado cadastrado. Clique em &quot;Adicionar Feriado&quot; para configurar.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {feriados.map(feriado => {
+                const feriadoDate = new Date(feriado.data + 'T00:00:00')
+                return (
+                  <div
+                    key={feriado.id}
+                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium">{feriado.descricao}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(feriadoDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteFeriado(feriado.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Calendar */}
       <Card>
         <CardContent className="p-4">
@@ -419,16 +526,27 @@ export default function AgendaPage() {
               const dayEventos = getEventosForDay(day)
               const isCurrentMonth = isSameMonth(day, currentMonth)
               const today = isToday(day)
+              const dayStr = format(day, 'yyyy-MM-dd')
+              const isFeriado = feriadosDates.has(dayStr)
+              const feriadoInfo = isFeriado ? feriados.find(f => f.data === dayStr) : null
               return (
                 <div
                   key={day.toISOString()}
                   className={`min-h-[80px] p-1 border rounded-md ${
                     !isCurrentMonth ? 'opacity-30' : ''
-                  } ${today ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''}`}
+                  } ${today ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''} ${
+                    isFeriado && isCurrentMonth ? 'bg-amber-50 border-amber-300 dark:bg-amber-950 dark:border-amber-700' : ''
+                  }`}
                 >
-                  <div className={`text-xs font-medium mb-1 ${today ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                  <div className={`text-xs font-medium mb-1 flex items-center gap-1 ${today ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
                     {format(day, 'd')}
+                    {isFeriado && <Badge className="bg-amber-500 text-white text-[9px] px-1 py-0 leading-tight">Feriado</Badge>}
                   </div>
+                  {isFeriado && feriadoInfo && (
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400 truncate mb-0.5" title={feriadoInfo.descricao}>
+                      {feriadoInfo.descricao}
+                    </div>
+                  )}
                   <div className="space-y-0.5">
                     {dayEventos.slice(0, 3).map(e => {
                       const materia = materias.find(m => m.id === e.materia_id)

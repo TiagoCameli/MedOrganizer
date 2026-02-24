@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useHorarios } from '@/hooks/useHorarios'
 import { useMaterias } from '@/hooks/useMaterias'
+import { useFeriados } from '@/hooks/useFeriados'
 import { Horario } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +27,7 @@ const timeToMinutes = (time: string) => {
 export default function HorariosPage() {
   const { horarios, loading, addHorario, updateHorario, deleteHorario } = useHorarios()
   const { materias } = useMaterias()
+  const { feriados } = useFeriados()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingHorario, setEditingHorario] = useState<Horario | null>(null)
   const [formSemestre, setFormSemestre] = useState('')
@@ -53,6 +55,20 @@ export default function HorariosPage() {
     return dates
   }
   const weekDates = getWeekDates()
+
+  // Map each day of the grid to its full YYYY-MM-DD date and check for feriados
+  const weekFeriados = useMemo(() => {
+    const map: Record<number, { date: string; feriado: string | null }> = {}
+    for (const dia of DIAS_GRID) {
+      const diff = dia - currentDay
+      const date = new Date(now)
+      date.setDate(now.getDate() + diff)
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const feriado = feriados.find(f => f.data === dateStr)
+      map[dia] = { date: dateStr, feriado: feriado?.descricao || null }
+    }
+    return map
+  }, [feriados, currentDay, now])
 
   const resetForm = () => {
     setFormSemestre('')
@@ -290,17 +306,21 @@ export default function HorariosPage() {
             {/* Header */}
             <div className="grid gap-px bg-border rounded-t-lg overflow-hidden" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
               <div className="bg-muted p-3 text-center text-sm font-medium">Horário</div>
-              {DIAS_GRID.map(dia => (
-                <div
-                  key={dia}
-                  className={`bg-muted p-3 text-center font-medium ${
-                    dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
-                  }`}
-                >
-                  <div className="text-sm">{DIAS_SEMANA[dia]}</div>
-                  <div className={`text-lg font-bold ${dia === currentDay ? '' : 'text-muted-foreground'}`}>{weekDates[dia]}</div>
-                </div>
-              ))}
+              {DIAS_GRID.map(dia => {
+                const isFeriado = !!weekFeriados[dia]?.feriado
+                return (
+                  <div
+                    key={dia}
+                    className={`bg-muted p-3 text-center font-medium ${
+                      dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
+                    } ${isFeriado ? 'bg-amber-50 dark:bg-amber-950' : ''}`}
+                  >
+                    <div className="text-sm">{DIAS_SEMANA[dia]}</div>
+                    <div className={`text-lg font-bold ${dia === currentDay ? '' : 'text-muted-foreground'}`}>{weekDates[dia]}</div>
+                    {isFeriado && <Badge className="bg-amber-500 text-white text-[10px] mt-1">Feriado</Badge>}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Body */}
@@ -321,6 +341,7 @@ export default function HorariosPage() {
               {/* Day columns */}
               {DIAS_GRID.map(dia => {
                 const dayHorarios = getHorariosForDay(dia)
+                const diaFeriado = weekFeriados[dia]?.feriado
                 return (
                   <div
                     key={dia}
@@ -336,6 +357,17 @@ export default function HorariosPage() {
                       />
                     ))}
 
+                    {/* Feriado overlay */}
+                    {diaFeriado && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center bg-amber-100/70 dark:bg-amber-950/70">
+                        <div className="text-center px-2">
+                          <div className="text-amber-700 dark:text-amber-400 font-semibold text-sm">Feriado</div>
+                          <div className="text-amber-600 dark:text-amber-500 text-xs mt-1">{diaFeriado}</div>
+                          <div className="text-amber-600/80 dark:text-amber-500/80 text-[10px] mt-0.5">Sem aulas</div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Class blocks */}
                     {dayHorarios.map(h => {
                       const materia = materias.find(m => m.id === h.materia_id)
@@ -349,8 +381,8 @@ export default function HorariosPage() {
                         <div
                           key={h.id}
                           className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-xs text-white group overflow-hidden z-10 ${
-                            happening ? 'ring-2 ring-green-400 ring-offset-1' : ''
-                          }`}
+                            happening && !diaFeriado ? 'ring-2 ring-green-400 ring-offset-1' : ''
+                          } ${diaFeriado ? 'opacity-30' : ''}`}
                           style={{
                             backgroundColor: materia?.cor || '#6366f1',
                             top: top + 1,
