@@ -347,6 +347,12 @@ export default function FlashcardsTab() {
       return
     }
 
+    // Shuffle cards (Fisher-Yates)
+    for (let i = data.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [data[i], data[j]] = [data[j], data[i]]
+    }
+
     setStudyMateriaNames(
       materias
         .filter(m => studyMaterias.has(m.id))
