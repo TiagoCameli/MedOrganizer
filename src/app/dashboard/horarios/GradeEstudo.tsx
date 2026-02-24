@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
-  Play, Pause, Square, RotateCcw, Target, Clock, Flame, BookOpen, Plus, Trash2, Loader2, Filter
+  Play, Pause, Square, RotateCcw, Target, Clock, Flame, BookOpen, Plus, Trash2, Loader2, Filter, Coffee
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval } from 'date-fns'
@@ -152,6 +152,8 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   const [isRunning, setIsRunning] = useState(false)
   const [isBreak, setIsBreak] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(25 * 60)
+  const [alarmType, setAlarmType] = useState<'som' | 'visual' | 'ambos'>('som')
+  const [showFlash, setShowFlash] = useState(false)
   const startTimeRef = useRef<number | null>(null)
   const targetEndRef = useRef<number | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -194,6 +196,24 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
     targetEndRef.current = null
   }, [focusMinutes])
 
+  const triggerAlarm = useCallback(() => {
+    if (alarmType === 'som' || alarmType === 'ambos') {
+      const ctx = new AudioContext()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = 800
+      gain.gain.value = 0.3
+      osc.start()
+      osc.stop(ctx.currentTime + 1.5)
+    }
+    if (alarmType === 'visual' || alarmType === 'ambos') {
+      setShowFlash(true)
+      setTimeout(() => setShowFlash(false), 2000)
+    }
+  }, [alarmType])
+
   // Timer tick effect
   useEffect(() => {
     if (!isRunning) return
@@ -222,6 +242,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
             })
             toast.success(`Sessão de ${durationMin} min registrada!`)
           }
+          triggerAlarm()
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Pomodoro concluído!', { body: 'Hora do intervalo.' })
           }
@@ -234,6 +255,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
           setIsRunning(true)
         } else {
           // Break completed
+          triggerAlarm()
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('Intervalo terminado!', { body: 'Volta a estudar!' })
           }
@@ -248,7 +270,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [isRunning, isBreak, focusMinutes, breakMinutes, timerMateriaId, addSession])
+  }, [isRunning, isBreak, focusMinutes, breakMinutes, timerMateriaId, addSession, triggerAlarm])
 
   // Manual stop: log partial session
   const stopAndLog = useCallback(() => {
@@ -268,6 +290,32 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
     }
     resetTimer()
   }, [timerMateriaId, isBreak, addSession, resetTimer])
+
+  const startBreakEarly = useCallback(() => {
+    if (startTimeRef.current && timerMateriaId) {
+      const durationMs = Date.now() - startTimeRef.current
+      const durationMin = Math.round(durationMs / 60000)
+      if (durationMin > 0) {
+        addSession({
+          materia_id: timerMateriaId,
+          duration_minutes: durationMin,
+          studied_at: format(new Date(), 'yyyy-MM-dd'),
+        })
+        toast.success(`Sessão de ${durationMin} min registrada!`)
+      }
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    setIsRunning(false)
+    setIsBreak(true)
+    const breakSecs = breakMinutes * 60
+    setSecondsLeft(breakSecs)
+    startTimeRef.current = Date.now()
+    targetEndRef.current = Date.now() + breakSecs * 1000
+    setIsRunning(true)
+  }, [timerMateriaId, breakMinutes, addSession])
 
   // Request notification permission
   useEffect(() => {
@@ -462,6 +510,10 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
 
   return (
     <div className="space-y-6">
+      {showFlash && (
+        <div className="fixed inset-0 z-50 pointer-events-none animate-pulse bg-indigo-500/20" />
+      )}
+
       {/* Semester filter */}
       {semestresDisponiveis.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -554,6 +606,27 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
               </Select>
             </div>
 
+            {/* Alarm type selector */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Alarme</Label>
+              <div className="flex rounded-lg border overflow-hidden">
+                {(['som', 'visual', 'ambos'] as const).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setAlarmType(type)}
+                    disabled={isRunning}
+                    className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                      alarmType === type
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    } disabled:opacity-50`}
+                  >
+                    {type === 'som' ? 'Som' : type === 'visual' ? 'Visual' : 'Ambos'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Timer settings */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -614,9 +687,16 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
                   <Play className="mr-2 h-4 w-4" /> {secondsLeft < focusMinutes * 60 || isBreak ? 'Continuar' : 'Iniciar'}
                 </Button>
               ) : (
-                <Button variant="outline" onClick={pauseTimer}>
-                  <Pause className="mr-2 h-4 w-4" /> Pausar
-                </Button>
+                <>
+                  <Button variant="outline" onClick={pauseTimer}>
+                    <Pause className="mr-2 h-4 w-4" /> Pausar
+                  </Button>
+                  {!isBreak && (
+                    <Button variant="outline" onClick={startBreakEarly}>
+                      <Coffee className="mr-2 h-4 w-4" /> Iniciar Pausa
+                    </Button>
+                  )}
+                </>
               )}
               {(isRunning || secondsLeft < (isBreak ? breakMinutes : focusMinutes) * 60) && !isBreak && (
                 <Button variant="outline" onClick={stopAndLog}>
