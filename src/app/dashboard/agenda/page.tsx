@@ -275,7 +275,7 @@ export default function AgendaPage() {
               <Plus className="mr-2 h-4 w-4" /> Novo Evento
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>{editingEvento ? 'Editar Evento' : 'Novo Evento'}</DialogTitle>
             </DialogHeader>
@@ -297,24 +297,24 @@ export default function AgendaPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Matéria(s) * <span className="text-muted-foreground font-normal text-xs">(selecione pelo menos uma)</span></Label>
-                  <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
-                    {materias.map(m => (
-                      <label key={m.id} className="flex items-center gap-2 cursor-pointer rounded-md p-1.5 hover:bg-muted/50">
-                        <Checkbox
-                          checked={materiaIds.includes(m.id)}
-                          onCheckedChange={() => toggleMateriaId(m.id)}
-                        />
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: m.cor }} />
-                        <span className="text-sm truncate">{m.nome}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <Label>Data e Hora *</Label>
+                  <Input type="datetime-local" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Data e Hora *</Label>
-                <Input type="datetime-local" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+                <Label>Matéria(s) * <span className="text-muted-foreground font-normal text-xs">(selecione pelo menos uma)</span></Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[280px] overflow-y-auto border rounded-md p-3">
+                  {materias.map(m => (
+                    <label key={m.id} className="flex items-center gap-2 cursor-pointer rounded-md p-2 hover:bg-muted/50">
+                      <Checkbox
+                        checked={materiaIds.includes(m.id)}
+                        onCheckedChange={() => toggleMateriaId(m.id)}
+                      />
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: m.cor }} />
+                      <span className="text-sm truncate">{m.nome}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Descrição (opcional)</Label>
