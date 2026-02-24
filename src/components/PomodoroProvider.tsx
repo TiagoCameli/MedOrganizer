@@ -72,7 +72,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       osc.frequency.value = 800
       gain.gain.value = 0.3
       osc.start()
-      osc.stop(ctx.currentTime + 1.5)
+      osc.stop(ctx.currentTime + 3)
     }
     if (alarmType === 'visual' || alarmType === 'ambos') {
       setShowFlash(true)
