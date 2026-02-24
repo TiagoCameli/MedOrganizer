@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter, Settings2, PartyPopper } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays, ChevronLeft, ChevronRight, Loader2, Filter, Settings2, PartyPopper, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   format,
@@ -242,6 +242,12 @@ export default function AgendaPage() {
     return filteredEventos
       .filter(e => !e.concluido && new Date(e.data_entrega) >= now)
       .sort((a, b) => new Date(a.data_entrega).getTime() - new Date(b.data_entrega).getTime())
+  }, [filteredEventos])
+
+  const completedEventos = useMemo(() => {
+    return filteredEventos
+      .filter(e => e.concluido)
+      .sort((a, b) => new Date(b.data_entrega).getTime() - new Date(a.data_entrega).getTime())
   }, [filteredEventos])
 
   if (loading) {
@@ -624,6 +630,55 @@ export default function AgendaPage() {
           </div>
         )}
       </div>
+
+      {/* Completed events list */}
+      {completedEventos.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            Concluídos
+            <Badge variant="secondary">{completedEventos.length}</Badge>
+          </h2>
+          <div className="space-y-2">
+            {completedEventos.map(evento => {
+              const materia = materias.find(m => m.id === evento.materia_id)
+              return (
+                <Card key={evento.id} className="opacity-75">
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <Checkbox
+                      checked={evento.concluido}
+                      onCheckedChange={(checked) => toggleConcluido(evento.id, checked as boolean)}
+                    />
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: materia?.cor }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium line-through text-muted-foreground">
+                          {evento.titulo}
+                        </span>
+                        <Badge className={TIPO_COLORS[evento.tipo]} variant="secondary">
+                          {TIPO_LABELS[evento.tipo]}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {materia?.nome} — {format(new Date(evento.data_entrega), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge variant="outline" className="text-green-600 border-green-300">Concluído</Badge>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(evento)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(evento.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
