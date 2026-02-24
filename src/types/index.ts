@@ -57,3 +57,12 @@ export interface Feriado {
   descricao: string
   created_at: string
 }
+
+export interface Flashcard {
+  id: string
+  user_id: string
+  materia_id: string
+  pergunta: string
+  resposta: string
+  created_at: string
+}

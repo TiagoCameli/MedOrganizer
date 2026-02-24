@@ -9,6 +9,7 @@ import {
   CalendarDays,
   GraduationCap,
   BookOpen,
+  Brain,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/dashboard/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/dashboard/notas', label: 'Notas', icon: GraduationCap },
   { href: '/dashboard/materias', label: 'Matérias', icon: BookOpen },
+  { href: '/dashboard/flashcards', label: 'Flashcards', icon: Brain },
 ]
 
 interface SidebarProps {
