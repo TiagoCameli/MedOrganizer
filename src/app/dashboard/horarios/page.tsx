@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useHorarios } from '@/hooks/useHorarios'
 import { useMaterias } from '@/hooks/useMaterias'
 import { useFeriados } from '@/hooks/useFeriados'
+import { useSemestres } from '@/hooks/useSemestres'
 import { Horario } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,7 @@ export default function HorariosPage() {
   const { horarios, loading, addHorario, updateHorario, deleteHorario } = useHorarios()
   const { materias } = useMaterias()
   const { feriados } = useFeriados()
+  const { semestres } = useSemestres()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingHorario, setEditingHorario] = useState<Horario | null>(null)
   const [formSemestre, setFormSemestre] = useState('')
@@ -39,7 +41,7 @@ export default function HorariosPage() {
   const [horaFim, setHoraFim] = useState('10:00')
   const [local, setLocal] = useState('')
   const [saving, setSaving] = useState(false)
-  const [filtroSemestre, setFiltroSemestre] = useState<string>('todos')
+  const [filtroSemestre, setFiltroSemestre] = useState<number | null>(null)
 
   const now = new Date()
   const currentDay = now.getDay()
@@ -141,12 +143,30 @@ export default function HorariosPage() {
   // Semestres disponíveis (extraídos das matérias cadastradas)
   const semestresDisponiveis = [...new Set(materias.map(m => m.semestre).filter(Boolean) as number[])].sort((a, b) => a - b)
 
+  // Determine current semester based on today's date
+  const semestreAtual = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const atual = semestres.find(s => s.data_inicio <= today && s.data_fim >= today)
+    return atual?.numero ?? null
+  }, [semestres])
+
+  // Auto-select current semester (or first available) on load
+  useEffect(() => {
+    if (filtroSemestre === null && semestresDisponiveis.length > 0) {
+      if (semestreAtual && semestresDisponiveis.includes(semestreAtual)) {
+        setFiltroSemestre(semestreAtual)
+      } else {
+        setFiltroSemestre(semestresDisponiveis[0])
+      }
+    }
+  }, [semestresDisponiveis, filtroSemestre, semestreAtual])
+
   // Horários filtrados por semestre
-  const horariosFiltrados = filtroSemestre === 'todos'
+  const horariosFiltrados = filtroSemestre === null
     ? horarios
     : horarios.filter(h => {
         const materia = materias.find(m => m.id === h.materia_id)
-        return materia?.semestre === Number(filtroSemestre)
+        return materia?.semestre === filtroSemestre
       })
 
   const getHorariosForDay = (dia: number) => {
@@ -162,8 +182,8 @@ export default function HorariosPage() {
   // Determine visible hour range based on classes
   const allStartHours = horariosFiltrados.map(h => Math.floor(timeToMinutes(h.hora_inicio) / 60))
   const allEndHours = horariosFiltrados.map(h => Math.ceil(timeToMinutes(h.hora_fim) / 60))
-  const minHour = allStartHours.length > 0 ? Math.min(7, ...allStartHours) : 7
-  const maxHour = allEndHours.length > 0 ? Math.max(19, ...allEndHours) : 19
+  const minHour = allStartHours.length > 0 ? Math.min(6, ...allStartHours) : 6
+  const maxHour = allEndHours.length > 0 ? Math.max(22, ...allEndHours) : 22
   const gridStartMinutes = minHour * 60
   const totalGridHeight = (maxHour - minHour) * PIXELS_PER_HOUR
   const visibleHours = Array.from({ length: maxHour - minHour + 1 }, (_, i) => {
@@ -198,9 +218,27 @@ export default function HorariosPage() {
 
         <TabsContent value="aulas">
           <div className="space-y-6">
-            {/* Header with add button */}
-            <div className="flex items-center justify-between">
-              <div />
+            {/* Filtro por semestre + botão novo horário */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              {semestresDisponiveis.length > 0 ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Semestre:</span>
+                  {semestresDisponiveis.map(sem => (
+                    <button
+                      key={sem}
+                      onClick={() => setFiltroSemestre(sem)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        filtroSemestre === sem
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                      }`}
+                    >
+                      {sem}º
+                    </button>
+                  ))}
+                </div>
+              ) : <div />}
               <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
                 <DialogTrigger asChild>
                   <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
@@ -278,25 +316,6 @@ export default function HorariosPage() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Filtro por semestre */}
-            {semestresDisponiveis.length > 0 && (
-              <div className="flex items-center gap-3">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={filtroSemestre} onValueChange={setFiltroSemestre}>
-                  <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os semestres</SelectItem>
-                    {semestresDisponiveis.map(s => (
-                      <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {filtroSemestre !== 'todos' && (
-                  <Badge variant="secondary">{horariosFiltrados.length} aula(s)</Badge>
-                )}
-              </div>
-            )}
 
             {materias.length === 0 ? (
               <Card>
@@ -432,7 +451,7 @@ export default function HorariosPage() {
         </TabsContent>
 
         <TabsContent value="estudo">
-          <GradeEstudo materias={materias} />
+          <GradeEstudo materias={materias} semestreAtual={semestreAtual} />
         </TabsContent>
       </Tabs>
     </div>

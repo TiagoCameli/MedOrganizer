@@ -66,6 +66,8 @@ export interface Conteudo {
   created_at: string
 }
 
+export type FlashcardType = 'basico' | 'basico_invertido' | 'cloze'
+
 export interface Flashcard {
   id: string
   user_id: string
@@ -73,7 +75,71 @@ export interface Flashcard {
   conteudo_id: string | null
   pergunta: string
   resposta: string
+  type: FlashcardType
+  group_id: string | null
+  card_index: number | null
+  ease_factor: number
+  interval_days: number
+  repetitions: number
+  next_review: string
   created_at: string
+}
+
+export interface FlashcardGroup {
+  group_id: string | null
+  type: FlashcardType
+  cards: Flashcard[]
+  display_pergunta: string
+  display_resposta: string
+  card_count: number
+}
+
+export type StudyQuality = 0 | 3 | 5
+
+export interface FlashcardReview {
+  id: string
+  user_id: string
+  flashcard_id: string
+  quality: StudyQuality
+  ease_factor_before: number
+  ease_factor_after: number
+  interval_before: number
+  interval_after: number
+  reviewed_at: string
+}
+
+export interface WeaknessTopic {
+  id: string
+  user_id: string
+  materia_id: string
+  conteudo_id: string | null
+  difficulty: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewStats {
+  materia_id: string
+  materia_nome: string
+  materia_cor: string
+  total: number
+  due: number
+  learned: number
+  new_cards: number
+  retention_rate: number
+}
+
+export interface ConteudoWeaknessStats {
+  conteudo_id: string | null
+  conteudo_nome: string | null
+  materia_id: string
+  materia_nome: string
+  materia_cor: string
+  total_reviews: number
+  errors: number
+  error_rate: number
+  last_reviewed: string | null
 }
 
 export interface StudySession {

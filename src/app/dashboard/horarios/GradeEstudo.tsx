@@ -81,9 +81,10 @@ function GoalsList({ goals, hoursMap, materias, onDelete, emptyMessage }: {
 
 interface GradeEstudoProps {
   materias: Materia[]
+  semestreAtual?: number | null
 }
 
-export function GradeEstudo({ materias }: GradeEstudoProps) {
+export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   const {
     sessions, goals, loading,
     fetchSessions, addSession,
@@ -101,12 +102,16 @@ export function GradeEstudo({ materias }: GradeEstudoProps) {
 
   const [selectedSemestre, setSelectedSemestre] = useState<number | null>(null)
 
-  // Auto-select first semester on load
+  // Auto-select current semester (or first available) on load
   useEffect(() => {
     if (selectedSemestre === null && semestresDisponiveis.length > 0) {
-      setSelectedSemestre(semestresDisponiveis[0])
+      if (semestreAtual && semestresDisponiveis.includes(semestreAtual)) {
+        setSelectedSemestre(semestreAtual)
+      } else {
+        setSelectedSemestre(semestresDisponiveis[0])
+      }
     }
-  }, [semestresDisponiveis, selectedSemestre])
+  }, [semestresDisponiveis, selectedSemestre, semestreAtual])
 
   // Materias filtered by selected semester
   const materiasFiltradas = useMemo(() => {
