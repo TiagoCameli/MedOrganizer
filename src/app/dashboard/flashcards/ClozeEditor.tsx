@@ -103,26 +103,18 @@ export default function ClozeEditor({ value, onChange }: ClozeEditorProps) {
 
       {markers.length > 0 && (
         <div className="space-y-2">
-          <Label>Preview dos cards ({markers.length})</Label>
-          <div className="space-y-2">
-            {markers.map((marker) => (
-              <div
-                key={marker.index}
-                className="p-2.5 border rounded-lg bg-background text-sm"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="secondary" className="text-xs">
-                    Card {marker.index}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Resposta: <strong>{marker.word}</strong>
-                  </span>
-                </div>
-                <p className="text-muted-foreground">
-                  {renderClozeQuestion(template, marker.index)}
-                </p>
-              </div>
-            ))}
+          <Label>Preview</Label>
+          <div className="p-2.5 border rounded-lg bg-background text-sm space-y-2">
+            <div>
+              <Badge variant="secondary" className="text-xs mb-1">Pergunta</Badge>
+              <p className="text-muted-foreground">{renderClozeQuestion(template)}</p>
+            </div>
+            <div>
+              <Badge variant="secondary" className="text-xs mb-1">Resposta</Badge>
+              <p className="text-muted-foreground">
+                {markers.map(m => m.word).join(', ')}
+              </p>
+            </div>
           </div>
         </div>
       )}

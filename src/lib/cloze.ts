@@ -20,23 +20,17 @@ export function parseClozeMarkers(template: string): ClozeMarker[] {
 }
 
 /**
- * Render a cloze question: replace the target cloze (cardIndex) with ___,
- * and show other cloze words normally (without markers).
+ * Render a cloze question: replace ALL cloze markers with ___.
  */
-export function renderClozeQuestion(template: string, cardIndex: number): string {
-  return template.replace(/\{\{c(\d+)::([^}]+)\}\}/g, (_match, idx, word) => {
-    return parseInt(idx, 10) === cardIndex ? '___' : word
-  })
+export function renderClozeQuestion(template: string): string {
+  return template.replace(/\{\{c\d+::([^}]+)\}\}/g, '___')
 }
 
 /**
- * Render a cloze answer: show the target cloze word highlighted (in brackets and bold),
- * and show other cloze words normally.
+ * Render a cloze answer: show ALL omitted words highlighted.
  */
-export function renderClozeAnswer(template: string, cardIndex: number): string {
-  return template.replace(/\{\{c(\d+)::([^}]+)\}\}/g, (_match, idx, word) => {
-    return parseInt(idx, 10) === cardIndex ? `【${word}】` : word
-  })
+export function renderClozeAnswer(template: string): string {
+  return template.replace(/\{\{c\d+::([^}]+)\}\}/g, '【$1】')
 }
 
 /**

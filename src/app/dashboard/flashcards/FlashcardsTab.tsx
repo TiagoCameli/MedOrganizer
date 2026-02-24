@@ -212,14 +212,13 @@ export default function FlashcardsTab() {
         })
         toast.success('Flashcard atualizado!')
       } else {
-        const cards = await addFlashcard(data)
-        const count = Array.isArray(cards) ? cards.length : 1
+        await addFlashcard(data)
         if (flashcardType === 'basico') {
           toast.success('Flashcard criado!')
         } else if (flashcardType === 'basico_invertido') {
           toast.success('2 flashcards criados! (frente e verso)')
         } else {
-          toast.success(`${count} flashcards de omissão criados!`)
+          toast.success('Flashcard de omissão criado!')
         }
       }
       setDialogOpen(false)
@@ -400,11 +399,11 @@ export default function FlashcardsTab() {
 
   // Render card content for study mode (handles cloze)
   const renderStudyCardContent = (card: Flashcard, flipped: boolean) => {
-    if (card.type === 'cloze' && card.card_index != null) {
+    if (card.type === 'cloze') {
       if (flipped) {
-        return renderClozeAnswer(card.pergunta, card.card_index)
+        return renderClozeAnswer(card.pergunta)
       } else {
-        return renderClozeQuestion(card.pergunta, card.card_index)
+        return renderClozeQuestion(card.pergunta)
       }
     }
     return flipped ? card.resposta : card.pergunta
@@ -415,8 +414,8 @@ export default function FlashcardsTab() {
     if (card.type === 'basico_invertido' && card.card_index === 1) {
       return <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">Invertido</Badge>
     }
-    if (card.type === 'cloze' && card.card_index != null) {
-      return <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão {card.card_index}</Badge>
+    if (card.type === 'cloze') {
+      return <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão</Badge>
     }
     return null
   }

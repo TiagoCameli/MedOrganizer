@@ -97,25 +97,23 @@ export function useFlashcards() {
       const markers = parseClozeMarkers(template)
       if (markers.length === 0) throw new Error('Nenhuma omissão marcada no texto')
 
-      const groupId = crypto.randomUUID()
-      const rows = markers.map((marker) => ({
-        ...baseData,
-        pergunta: template,
-        resposta: marker.word,
-        type: 'cloze' as const,
-        group_id: groupId,
-        card_index: marker.index,
-        user_id: user.id,
-      }))
-
       const { data, error } = await supabase
         .from('flashcards')
-        .insert(rows)
+        .insert({
+          ...baseData,
+          pergunta: template,
+          resposta: markers.map(m => m.word).join(', '),
+          type: 'cloze' as const,
+          group_id: null,
+          card_index: null,
+          user_id: user.id,
+        })
         .select()
+        .single()
 
       if (error) throw error
-      setFlashcards(prev => [...(data || []), ...prev])
-      return data || []
+      setFlashcards(prev => [data, ...prev])
+      return [data]
     }
 
     throw new Error(`Tipo de flashcard desconhecido: ${type}`)
@@ -178,13 +176,13 @@ export function groupFlashcards(cards: Flashcard[]): FlashcardGroup[] {
 
   const groups: FlashcardGroup[] = []
 
-  // Standalone basico cards
+  // Standalone cards (basico and cloze)
   for (const card of standalone) {
     groups.push({
       group_id: null,
       type: card.type,
       cards: [card],
-      display_pergunta: card.pergunta,
+      display_pergunta: card.type === 'cloze' ? stripClozeMarkers(card.pergunta) : card.pergunta,
       display_resposta: card.resposta,
       card_count: 1,
     })

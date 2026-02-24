@@ -146,15 +146,15 @@ export default function RevisaoTab() {
                 {currentCard.type === 'basico_invertido' && currentCard.card_index === 1 && (
                   <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">Invertido</Badge>
                 )}
-                {currentCard.type === 'cloze' && currentCard.card_index != null && (
-                  <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão {currentCard.card_index}</Badge>
+                {currentCard.type === 'cloze' && (
+                  <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão</Badge>
                 )}
               </div>
               <p className="text-xl font-medium whitespace-pre-wrap">
-                {currentCard.type === 'cloze' && currentCard.card_index != null
+                {currentCard.type === 'cloze'
                   ? (studyFlipped
-                      ? renderClozeAnswer(currentCard.pergunta, currentCard.card_index)
-                      : renderClozeQuestion(currentCard.pergunta, currentCard.card_index))
+                      ? renderClozeAnswer(currentCard.pergunta)
+                      : renderClozeQuestion(currentCard.pergunta))
                   : (studyFlipped ? currentCard.resposta : currentCard.pergunta)
                 }
               </p>
