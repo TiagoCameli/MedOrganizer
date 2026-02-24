@@ -19,6 +19,7 @@ export const SRS_CONFIG = {
   startingEase: 2.5,
   minimumEase: 1.3,
   fuzzPercentage: 0.05,           // ±5%
+  maxIntervalDays: 15,            // cap máximo de intervalo
   newCardsPerDay: 20,
   maxReviewsPerDay: 200,
 } as const
@@ -300,11 +301,12 @@ function getIntervalMinutes(card: Flashcard, rating: StudyQuality): number {
   // Review status
   const ef = Math.max(SRS_CONFIG.minimumEase, card.ease_factor)
   const interval = card.interval_days || 1
+  const maxMin = SRS_CONFIG.maxIntervalDays * 60 * 24
   switch (rating) {
     case 1: return SRS_CONFIG.relearningSteps[0]
-    case 2: return Math.max(1, Math.round(interval * 1.2)) * 60 * 24
-    case 3: return Math.max(1, Math.round(interval * ef)) * 60 * 24
-    case 4: return Math.max(1, Math.round(interval * (ef + 0.15) * 1.3)) * 60 * 24
+    case 2: return Math.min(maxMin, Math.max(1, Math.round(interval * 1.2)) * 60 * 24)
+    case 3: return Math.min(maxMin, Math.max(1, Math.round(interval * ef)) * 60 * 24)
+    case 4: return Math.min(maxMin, Math.max(1, Math.round(interval * (ef + 0.15) * 1.3)) * 60 * 24)
   }
 }
 
@@ -321,14 +323,19 @@ function makeResult(params: {
   learning_step: number
   nextDate: Date
 }): SRSResult {
+  const cappedDays = Math.min(params.interval_days, SRS_CONFIG.maxIntervalDays)
+  const cappedDate = params.interval_days > SRS_CONFIG.maxIntervalDays
+    ? addDays(new Date(), SRS_CONFIG.maxIntervalDays)
+    : params.nextDate
+
   return {
     status: params.status,
     ease_factor: Math.round(Math.max(SRS_CONFIG.minimumEase, params.ease_factor) * 100) / 100,
-    interval_days: params.interval_days,
+    interval_days: cappedDays,
     repetitions: params.repetitions,
     lapses: params.lapses,
     learning_step: params.learning_step,
-    next_review: params.nextDate.toISOString().split('T')[0],
+    next_review: cappedDate.toISOString().split('T')[0],
   }
 }
 
