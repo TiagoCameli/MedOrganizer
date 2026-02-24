@@ -1,3 +1,5 @@
+import React from 'react'
+
 export interface ClozeMarker {
   index: number
   word: string
@@ -27,10 +29,21 @@ export function renderClozeQuestion(template: string): string {
 }
 
 /**
- * Render a cloze answer: show ALL omitted words highlighted.
+ * Render a cloze answer: show ALL omitted words in blue bold.
+ * Returns a React node array.
  */
-export function renderClozeAnswer(template: string): string {
-  return template.replace(/\{\{c\d+::([^}]+)\}\}/g, '【$1】')
+export function renderClozeAnswer(template: string): React.ReactNode {
+  const parts = template.split(/(\{\{c\d+::[^}]+\}\})/g)
+  return parts.map((part, i) => {
+    const match = part.match(/^\{\{c\d+::([^}]+)\}\}$/)
+    if (match) {
+      return React.createElement('span', {
+        key: i,
+        className: 'text-blue-600 font-bold',
+      }, match[1])
+    }
+    return part
+  })
 }
 
 /**
