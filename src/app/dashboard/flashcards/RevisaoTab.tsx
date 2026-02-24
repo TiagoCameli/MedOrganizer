@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMaterias } from '@/hooks/useMaterias'
 import { useConteudos } from '@/hooks/useConteudos'
-import { useSpacedRepetition, calculateSM2 } from '@/hooks/useSpacedRepetition'
-import { Flashcard } from '@/types'
+import { useSpacedRepetition, getNextIntervals } from '@/hooks/useSpacedRepetition'
+import { StudyQuality } from '@/types'
 import { renderClozeQuestion, renderClozeAnswer } from '@/lib/cloze'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,15 +23,26 @@ export default function RevisaoTab() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
+  // Time tracking
+  const cardShownAt = useRef<number>(Date.now())
+
+  // Reset timer when card changes or flips
+  useEffect(() => {
+    if (studyMode) {
+      cardShownAt.current = Date.now()
+    }
+  }, [studyIndex, studyMode])
+
   // Load stats and due cards on mount
   useEffect(() => {
     if (materias.length > 0 && !initialized) {
       const matData = materias.map(m => ({ id: m.id, nome: m.nome, cor: m.cor }))
       fetchReviewStats(matData)
       fetchDueCards()
+      fetchConteudosByMaterias(materias.map(m => m.id))
       setInitialized(true)
     }
-  }, [materias, initialized, fetchReviewStats, fetchDueCards])
+  }, [materias, initialized, fetchReviewStats, fetchDueCards, fetchConteudosByMaterias])
 
   const totalDue = reviewStats.reduce((sum, s) => sum + s.due, 0)
   const totalLearned = reviewStats.reduce((sum, s) => sum + s.learned, 0)
@@ -52,33 +63,32 @@ export default function RevisaoTab() {
     setStudyIndex(0)
     setStudyFlipped(false)
     setStudyMode(true)
+    cardShownAt.current = Date.now()
   }
 
-  const handleStudyQuality = async (quality: 0 | 3 | 5) => {
-    const currentCard = dueCards[studyIndex]
+  const handleStudyQuality = useCallback(async (quality: StudyQuality) => {
+    const currentCard = dueCards[Math.min(studyIndex, dueCards.length - 1)]
     if (!currentCard || submittingReview) return
+
+    const timeTaken = Date.now() - cardShownAt.current
 
     setSubmittingReview(true)
     try {
-      const result = await submitReview(currentCard, quality)
+      const result = await submitReview(currentCard, quality, timeTaken)
       const days = result.interval_days
-      const label = days === 1 ? '1 dia' : `${days} dias`
+      const label = days === 0 ? 'hoje' : days === 1 ? '1 dia' : `${days} dias`
       toast.success(`Próxima revisão em ${label}`)
 
-      // dueCards is updated by the hook (card removed)
-      // Check if there are more cards at the current index
       if (studyIndex < dueCards.length - 1) {
-        // Don't increment index since the array shifted
         setStudyFlipped(false)
+        cardShownAt.current = Date.now()
       } else if (dueCards.length > 1) {
-        // Last card but more remain (array shifted)
         setStudyIndex(0)
         setStudyFlipped(false)
+        cardShownAt.current = Date.now()
       } else {
-        // No more cards
         toast.success('Todas as revisões de hoje concluídas!')
         setStudyMode(false)
-        // Refresh stats
         const matData = materias.map(m => ({ id: m.id, nome: m.nome, cor: m.cor }))
         fetchReviewStats(matData)
       }
@@ -86,26 +96,57 @@ export default function RevisaoTab() {
       toast.error('Erro ao registrar revisão: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
     }
     setSubmittingReview(false)
-  }
+  }, [dueCards, studyIndex, submittingReview, submitReview, materias, fetchReviewStats])
+
+  // Keyboard shortcuts (1=Errei, 2=Difícil, 3=Bom, 4=Fácil, Space=Flip)
+  useEffect(() => {
+    if (!studyMode) return
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault()
+        if (!studyFlipped) {
+          setStudyFlipped(true)
+        }
+        return
+      }
+
+      if (!studyFlipped) return
+
+      if (e.key === '1') handleStudyQuality(1)
+      else if (e.key === '2') handleStudyQuality(2)
+      else if (e.key === '3') handleStudyQuality(3)
+      else if (e.key === '4') handleStudyQuality(4)
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [studyMode, studyFlipped, handleStudyQuality])
+
+  // Queue counts
+  const newCount = dueCards.filter(c => c.status === 'new').length
+  const learningCount = dueCards.filter(c => c.status === 'learning' || c.status === 'relearning').length
+  const reviewCount = dueCards.filter(c => c.status === 'review').length
 
   // Study mode view
   if (studyMode && dueCards.length > 0) {
     const currentCard = dueCards[Math.min(studyIndex, dueCards.length - 1)]
     const conteudoNome = getConteudoNome(currentCard.conteudo_id)
     const cardMateria = getMateriaNome(currentCard.materia_id)
-
-    const previewErrei = calculateSM2(currentCard, 0)
-    const previewDificil = calculateSM2(currentCard, 3)
-    const previewFacil = calculateSM2(currentCard, 5)
+    const previews = getNextIntervals(currentCard)
 
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Revisão Espaçada</h1>
-            <p className="text-muted-foreground">
-              Card {Math.min(studyIndex + 1, dueCards.length)} de {dueCards.length} pendentes
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-sm text-blue-600 font-medium">{newCount} novas</span>
+              <span className="text-sm text-amber-600 font-medium">{learningCount} aprendendo</span>
+              <span className="text-sm text-green-600 font-medium">{reviewCount} revisão</span>
+            </div>
           </div>
           <Button variant="outline" onClick={() => {
             setStudyMode(false)
@@ -160,48 +201,62 @@ export default function RevisaoTab() {
               </p>
               {!studyFlipped && (
                 <p className="text-sm text-muted-foreground mt-6">
-                  Clique para ver a resposta
+                  Clique ou pressione Espaço para ver a resposta
                 </p>
               )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Answer buttons */}
         <div className="flex justify-center gap-3">
           {!studyFlipped ? (
             <Button variant="outline" onClick={() => setStudyFlipped(true)}>
               <RotateCcw className="mr-2 h-4 w-4" /> Virar
             </Button>
           ) : (
-            <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-2xl">
               <Button
                 variant="outline"
-                className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                onClick={() => handleStudyQuality(0)}
+                className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950 flex-col h-auto py-3"
+                onClick={() => handleStudyQuality(1)}
                 disabled={submittingReview}
               >
-                Errei
-                <span className="ml-1 text-xs opacity-70">({previewErrei.interval_days}d)</span>
+                <span className="font-medium">Errei</span>
+                <span className="text-xs opacity-70">{previews.again}</span>
+                <span className="text-[10px] opacity-50">1</span>
               </Button>
               <Button
                 variant="outline"
-                className="border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                className="border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 flex-col h-auto py-3"
+                onClick={() => handleStudyQuality(2)}
+                disabled={submittingReview}
+              >
+                <span className="font-medium">Difícil</span>
+                <span className="text-xs opacity-70">{previews.hard}</span>
+                <span className="text-[10px] opacity-50">2</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="border-green-300 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 flex-col h-auto py-3"
                 onClick={() => handleStudyQuality(3)}
                 disabled={submittingReview}
               >
-                Difícil
-                <span className="ml-1 text-xs opacity-70">({previewDificil.interval_days}d)</span>
+                <span className="font-medium">Bom</span>
+                <span className="text-xs opacity-70">{previews.good}</span>
+                <span className="text-[10px] opacity-50">3</span>
               </Button>
               <Button
                 variant="outline"
-                className="border-green-300 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-                onClick={() => handleStudyQuality(5)}
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 flex-col h-auto py-3"
+                onClick={() => handleStudyQuality(4)}
                 disabled={submittingReview}
               >
-                Fácil
-                <span className="ml-1 text-xs opacity-70">({previewFacil.interval_days}d)</span>
+                <span className="font-medium">Fácil</span>
+                <span className="text-xs opacity-70">{previews.easy}</span>
+                <span className="text-[10px] opacity-50">4</span>
               </Button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -312,6 +367,7 @@ export default function RevisaoTab() {
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Aprendidos</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Novos</th>
                     <th className="text-center p-3 text-sm font-medium text-muted-foreground">Retenção</th>
+                    <th className="text-center p-3 text-sm font-medium text-muted-foreground">Intervalo</th>
                     <th className="p-3 text-sm font-medium text-muted-foreground min-w-[120px]">Progresso</th>
                   </tr>
                 </thead>
@@ -333,6 +389,7 @@ export default function RevisaoTab() {
                       <td className="text-center p-3 text-sm text-green-600">{stat.learned}</td>
                       <td className="text-center p-3 text-sm text-muted-foreground">{stat.new_cards}</td>
                       <td className="text-center p-3 text-sm">{stat.retention_rate}%</td>
+                      <td className="text-center p-3 text-sm text-muted-foreground">{stat.avg_interval}d</td>
                       <td className="p-3">
                         <div className="w-full bg-muted rounded-full h-2">
                           <div

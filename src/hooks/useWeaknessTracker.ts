@@ -109,7 +109,7 @@ export function useWeaknessTracker() {
       }
       const entry = byConteudo.get(key)!
       entry.total++
-      if (review.quality === 0) entry.errors++
+      if (review.quality === 1) entry.errors++
       if (!entry.last || review.reviewed_at > entry.last) {
         entry.last = review.reviewed_at
       }

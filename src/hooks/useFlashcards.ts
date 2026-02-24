@@ -52,7 +52,7 @@ export function useFlashcards() {
   }, [supabase])
 
   const addFlashcard = async (
-    flashcard: Omit<Flashcard, 'id' | 'user_id' | 'created_at' | 'ease_factor' | 'interval_days' | 'repetitions' | 'next_review' | 'type' | 'group_id' | 'card_index'> & {
+    flashcard: Omit<Flashcard, 'id' | 'user_id' | 'created_at' | 'ease_factor' | 'interval_days' | 'repetitions' | 'next_review' | 'type' | 'group_id' | 'card_index' | 'status' | 'lapses' | 'learning_step'> & {
       type?: FlashcardType
       clozeTemplate?: string
     }

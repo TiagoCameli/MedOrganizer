@@ -68,6 +68,8 @@ export interface Conteudo {
 
 export type FlashcardType = 'basico' | 'basico_invertido' | 'cloze'
 
+export type CardStatus = 'new' | 'learning' | 'review' | 'relearning'
+
 export interface Flashcard {
   id: string
   user_id: string
@@ -82,6 +84,9 @@ export interface Flashcard {
   interval_days: number
   repetitions: number
   next_review: string
+  status: CardStatus
+  lapses: number
+  learning_step: number
   created_at: string
 }
 
@@ -94,7 +99,7 @@ export interface FlashcardGroup {
   card_count: number
 }
 
-export type StudyQuality = 0 | 3 | 5
+export type StudyQuality = 1 | 2 | 3 | 4
 
 export interface FlashcardReview {
   id: string
@@ -105,6 +110,7 @@ export interface FlashcardReview {
   ease_factor_after: number
   interval_before: number
   interval_after: number
+  time_taken?: number | null
   reviewed_at: string
 }
 
@@ -127,7 +133,10 @@ export interface ReviewStats {
   due: number
   learned: number
   new_cards: number
+  learning_cards: number
+  mature_cards: number
   retention_rate: number
+  avg_interval: number
 }
 
 export interface ConteudoWeaknessStats {
@@ -146,6 +155,7 @@ export interface StudySession {
   id: string
   user_id: string
   materia_id: string
+  conteudo_id?: string | null
   duration_minutes: number
   studied_at: string // YYYY-MM-DD
   created_at: string

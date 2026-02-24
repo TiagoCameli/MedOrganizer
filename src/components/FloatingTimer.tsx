@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePomodoroTimer } from './PomodoroProvider'
+import { useConteudos } from '@/hooks/useConteudos'
 import { Materia } from '@/types'
 import { Play, Pause, Square, RotateCcw } from 'lucide-react'
 
@@ -10,12 +12,22 @@ interface FloatingTimerProps {
 
 export function FloatingTimer({ materias }: FloatingTimerProps) {
   const {
-    timerMateriaId, isRunning, isBreak, secondsLeft,
+    timerMateriaId, timerConteudoId,
+    isRunning, isBreak, secondsLeft,
     focusMinutes, breakMinutes, showFlash,
     startTimer, pauseTimer, stopAndLog, resetTimer,
   } = usePomodoroTimer()
 
+  const { conteudos, fetchConteudos } = useConteudos()
+
+  useEffect(() => {
+    if (timerMateriaId) {
+      fetchConteudos(timerMateriaId)
+    }
+  }, [timerMateriaId, fetchConteudos])
+
   const timerMateria = materias.find(m => m.id === timerMateriaId)
+  const timerConteudo = timerConteudoId ? conteudos.find(c => c.id === timerConteudoId) : null
 
   const isActive = isRunning || isBreak || secondsLeft !== focusMinutes * 60
 
@@ -43,6 +55,9 @@ export function FloatingTimer({ materias }: FloatingTimerProps) {
             />
             <span className="text-xs font-medium truncate max-w-[120px]">
               {timerMateria?.nome || 'Pomodoro'}
+              {timerConteudo && (
+                <span className="text-muted-foreground font-normal"> - {timerConteudo.nome}</span>
+              )}
             </span>
             <span className="text-[10px] text-muted-foreground ml-auto">
               {isRunning ? (isBreak ? 'Intervalo' : 'Focando') : 'Pausado'}

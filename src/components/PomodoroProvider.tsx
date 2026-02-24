@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 interface PomodoroContextType {
   timerMateriaId: string
   setTimerMateriaId: (id: string) => void
+  timerConteudoId: string
+  setTimerConteudoId: (id: string) => void
   focusMinutes: number
   setFocusMinutes: (min: number) => void
   breakMinutes: number
@@ -28,7 +30,12 @@ interface PomodoroContextType {
 const PomodoroContext = createContext<PomodoroContextType | null>(null)
 
 export function PomodoroProvider({ children }: { children: React.ReactNode }) {
-  const [timerMateriaId, setTimerMateriaId] = useState('')
+  const [timerMateriaId, setTimerMateriaIdRaw] = useState('')
+  const [timerConteudoId, setTimerConteudoId] = useState('')
+  const setTimerMateriaId = useCallback((id: string) => {
+    setTimerMateriaIdRaw(id)
+    setTimerConteudoId('')
+  }, [])
   const [focusMinutes, setFocusMinutes] = useState(25)
   const [breakMinutes, setBreakMinutes] = useState(5)
   const [isRunning, setIsRunning] = useState(false)
@@ -43,7 +50,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = createClient()
 
-  const logSession = useCallback(async (materiaId: string, durationMin: number) => {
+  const logSession = useCallback(async (materiaId: string, durationMin: number, conteudoId?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -54,6 +61,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
           duration_minutes: durationMin,
           studied_at: format(new Date(), 'yyyy-MM-dd'),
           user_id: user.id,
+          conteudo_id: conteudoId || null,
         })
       toast.success(`Sessão de ${durationMin} min registrada!`)
       window.dispatchEvent(new Event('pomodoroSessionAdded'))
@@ -131,7 +139,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
           const durationMs = Date.now() - startTimeRef.current!
           const durationMin = Math.round(durationMs / 60000)
           if (durationMin > 0 && timerMateriaId) {
-            logSession(timerMateriaId, durationMin)
+            logSession(timerMateriaId, durationMin, timerConteudoId)
           }
           triggerAlarm()
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -159,27 +167,27 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [isRunning, isBreak, focusMinutes, breakMinutes, timerMateriaId, logSession, triggerAlarm])
+  }, [isRunning, isBreak, focusMinutes, breakMinutes, timerMateriaId, timerConteudoId, logSession, triggerAlarm])
 
   const stopAndLog = useCallback(() => {
     if (startTimeRef.current && timerMateriaId && !isBreak) {
       const durationMs = Date.now() - startTimeRef.current
       const durationMin = Math.round(durationMs / 60000)
       if (durationMin > 0) {
-        logSession(timerMateriaId, durationMin)
+        logSession(timerMateriaId, durationMin, timerConteudoId)
       } else {
         toast.info('Sessão muito curta para registrar')
       }
     }
     resetTimer()
-  }, [timerMateriaId, isBreak, logSession, resetTimer])
+  }, [timerMateriaId, timerConteudoId, isBreak, logSession, resetTimer])
 
   const startBreakEarly = useCallback(() => {
     if (startTimeRef.current && timerMateriaId) {
       const durationMs = Date.now() - startTimeRef.current
       const durationMin = Math.round(durationMs / 60000)
       if (durationMin > 0) {
-        logSession(timerMateriaId, durationMin)
+        logSession(timerMateriaId, durationMin, timerConteudoId)
       }
     }
     if (intervalRef.current) {
@@ -193,7 +201,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     startTimeRef.current = Date.now()
     targetEndRef.current = Date.now() + breakSecs * 1000
     setIsRunning(true)
-  }, [timerMateriaId, breakMinutes, logSession])
+  }, [timerMateriaId, timerConteudoId, breakMinutes, logSession])
 
   // Request notification permission
   useEffect(() => {
@@ -215,6 +223,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   return (
     <PomodoroContext.Provider value={{
       timerMateriaId, setTimerMateriaId,
+      timerConteudoId, setTimerConteudoId,
       focusMinutes, setFocusMinutes,
       breakMinutes, setBreakMinutes,
       isRunning, isBreak, secondsLeft,

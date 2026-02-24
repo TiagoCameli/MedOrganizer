@@ -2,57 +2,28 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Flashcard, StudyQuality, ReviewStats } from '@/types'
+import { Flashcard, StudyQuality, ReviewStats, FlashcardReview } from '@/types'
+import { processAnswer, getNextIntervals, formatInterval, SRS_CONFIG } from '@/lib/srs-engine'
 
-interface SM2Result {
-  ease_factor: number
-  interval_days: number
-  repetitions: number
-  next_review: string
-}
-
-export function calculateSM2(flashcard: Flashcard, quality: StudyQuality): SM2Result {
-  let { ease_factor, interval_days, repetitions } = flashcard
-
-  if (quality < 3) {
-    // Failed — reset
-    repetitions = 0
-    interval_days = 1
-  } else {
-    // Passed
-    repetitions += 1
-    if (repetitions === 1) {
-      interval_days = 1
-    } else if (repetitions === 2) {
-      interval_days = 6
-    } else {
-      interval_days = Math.round(interval_days * ease_factor)
-    }
-  }
-
-  // Update ease factor: EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02))
-  ease_factor = ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-  if (ease_factor < 1.3) ease_factor = 1.3
-
-  // Calculate next review date
-  const today = new Date()
-  const nextDate = new Date(today)
-  nextDate.setDate(nextDate.getDate() + interval_days)
-  const next_review = nextDate.toISOString().split('T')[0]
-
-  return {
-    ease_factor: Math.round(ease_factor * 100) / 100,
-    interval_days,
-    repetitions,
-    next_review,
-  }
-}
+// Re-export for consumers
+export { processAnswer, getNextIntervals, formatInterval, SRS_CONFIG }
 
 export function useSpacedRepetition() {
   const [dueCards, setDueCards] = useState<Flashcard[]>([])
   const [loading, setLoading] = useState(false)
   const [reviewStats, setReviewStats] = useState<ReviewStats[]>([])
   const supabase = createClient()
+
+  // Sort cards by priority: relearning > review > learning > new
+  const statusPriority = (status: string) => {
+    switch (status) {
+      case 'relearning': return 0
+      case 'review': return 1
+      case 'learning': return 2
+      case 'new': return 3
+      default: return 4
+    }
+  }
 
   const fetchDueCards = useCallback(async (materiaIds?: string[]) => {
     setLoading(true)
@@ -63,7 +34,6 @@ export function useSpacedRepetition() {
         .from('flashcards')
         .select('*')
         .lte('next_review', today)
-        .order('next_review', { ascending: true })
 
       if (materiaIds && materiaIds.length > 0) {
         query = query.in('materia_id', materiaIds)
@@ -74,11 +44,41 @@ export function useSpacedRepetition() {
       if (error) {
         console.error('Error fetching due cards:', error)
         setDueCards([])
-      } else {
-        setDueCards(data || [])
+        setLoading(false)
+        return []
       }
+
+      const allDue = data || []
+
+      // Sort by status priority, then by next_review asc
+      allDue.sort((a, b) => {
+        const pa = statusPriority(a.status)
+        const pb = statusPriority(b.status)
+        if (pa !== pb) return pa - pb
+        return a.next_review.localeCompare(b.next_review)
+      })
+
+      // Apply daily limits
+      let newCount = 0
+      let reviewCount = 0
+      const limited = allDue.filter(card => {
+        if (card.status === 'new') {
+          if (newCount >= SRS_CONFIG.newCardsPerDay) return false
+          newCount++
+          return true
+        }
+        if (card.status === 'review') {
+          if (reviewCount >= SRS_CONFIG.maxReviewsPerDay) return false
+          reviewCount++
+          return true
+        }
+        // learning and relearning always included
+        return true
+      })
+
+      setDueCards(limited)
       setLoading(false)
-      return data || []
+      return limited
     } catch (e) {
       console.error('Error fetching due cards:', e)
       setDueCards([])
@@ -87,13 +87,17 @@ export function useSpacedRepetition() {
     }
   }, [supabase])
 
-  const submitReview = useCallback(async (flashcard: Flashcard, quality: StudyQuality) => {
+  const submitReview = useCallback(async (
+    flashcard: Flashcard,
+    quality: StudyQuality,
+    timeTaken?: number
+  ) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Não autenticado')
 
-    const result = calculateSM2(flashcard, quality)
+    const result = processAnswer(flashcard, quality)
 
-    // Update flashcard with new SM-2 values
+    // Update flashcard with new SRS values
     const { error: updateError } = await supabase
       .from('flashcards')
       .update({
@@ -101,6 +105,9 @@ export function useSpacedRepetition() {
         interval_days: result.interval_days,
         repetitions: result.repetitions,
         next_review: result.next_review,
+        status: result.status,
+        lapses: result.lapses,
+        learning_step: result.learning_step,
       })
       .eq('id', flashcard.id)
 
@@ -117,6 +124,7 @@ export function useSpacedRepetition() {
         ease_factor_after: result.ease_factor,
         interval_before: flashcard.interval_days,
         interval_after: result.interval_days,
+        time_taken: timeTaken ?? null,
       })
 
     if (reviewError) throw reviewError
@@ -142,7 +150,7 @@ export function useSpacedRepetition() {
 
       const { data: allCards, error } = await supabase
         .from('flashcards')
-        .select('id, materia_id, repetitions, next_review')
+        .select('id, materia_id, repetitions, next_review, status, interval_days, ease_factor')
         .in('materia_id', materiaIds)
 
       if (error) {
@@ -156,8 +164,13 @@ export function useSpacedRepetition() {
         const total = cards.length
         const due = cards.filter(c => c.next_review <= today).length
         const learned = cards.filter(c => c.repetitions > 0).length
-        const new_cards = cards.filter(c => c.repetitions === 0).length
+        const new_cards = cards.filter(c => c.status === 'new').length
+        const learning_cards = cards.filter(c => c.status === 'learning' || c.status === 'relearning').length
+        const mature_cards = cards.filter(c => c.interval_days >= 21).length
         const retention_rate = total > 0 ? Math.round((learned / total) * 100) : 0
+        const avg_interval = cards.length > 0
+          ? Math.round(cards.reduce((sum, c) => sum + c.interval_days, 0) / cards.length * 10) / 10
+          : 0
 
         return {
           materia_id: m.id,
@@ -167,7 +180,10 @@ export function useSpacedRepetition() {
           due,
           learned,
           new_cards,
+          learning_cards,
+          mature_cards,
           retention_rate,
+          avg_interval,
         }
       }).filter(s => s.total > 0)
 
@@ -182,6 +198,53 @@ export function useSpacedRepetition() {
     }
   }, [supabase])
 
+  // Fetch review history for statistics charts
+  const fetchReviewHistory = useCallback(async (days: number = 30) => {
+    try {
+      const since = new Date()
+      since.setDate(since.getDate() - days)
+      const sinceStr = since.toISOString()
+
+      const { data, error } = await supabase
+        .from('flashcard_reviews')
+        .select('*')
+        .gte('reviewed_at', sinceStr)
+        .order('reviewed_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching review history:', error)
+        return []
+      }
+      return (data || []) as FlashcardReview[]
+    } catch (e) {
+      console.error('Error fetching review history:', e)
+      return []
+    }
+  }, [supabase])
+
+  // Fetch all flashcards for statistics (interval distribution, forecast)
+  const fetchAllFlashcards = useCallback(async (materiaIds?: string[]) => {
+    try {
+      let query = supabase
+        .from('flashcards')
+        .select('*')
+
+      if (materiaIds && materiaIds.length > 0) {
+        query = query.in('materia_id', materiaIds)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        console.error('Error fetching all flashcards:', error)
+        return []
+      }
+      return (data || []) as Flashcard[]
+    } catch (e) {
+      console.error('Error fetching all flashcards:', e)
+      return []
+    }
+  }, [supabase])
+
   return {
     dueCards,
     loading,
@@ -189,5 +252,7 @@ export function useSpacedRepetition() {
     fetchDueCards,
     submitReview,
     fetchReviewStats,
+    fetchReviewHistory,
+    fetchAllFlashcards,
   }
 }

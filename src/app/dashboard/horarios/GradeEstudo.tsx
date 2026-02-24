@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useStudySessions } from '@/hooks/useStudySessions'
 import { usePomodoroTimer } from '@/components/PomodoroProvider'
+import { useConteudos } from '@/hooks/useConteudos'
 import { Materia, StudyGoal } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,8 +12,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
-  Play, Pause, Square, RotateCcw, Target, Clock, Flame, BookOpen, Plus, Trash2, Loader2, Filter, Coffee
+  Play, Pause, Square, RotateCcw, Target, Clock, Flame, BookOpen, Plus, Trash2, Loader2, Filter, Coffee, List
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, eachDayOfInterval, eachWeekOfInterval } from 'date-fns'
@@ -88,18 +90,28 @@ interface GradeEstudoProps {
 export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   const {
     sessions, goals, loading,
-    fetchSessions,
+    fetchSessions, deleteSession,
     upsertGoal, deleteGoal
   } = useStudySessions()
 
   const {
     timerMateriaId, setTimerMateriaId,
+    timerConteudoId, setTimerConteudoId,
     focusMinutes, setFocusMinutes,
     breakMinutes, setBreakMinutes,
     isRunning, isBreak, secondsLeft,
     alarmType, setAlarmType,
     startTimer, pauseTimer, resetTimer, stopAndLog, startBreakEarly,
   } = usePomodoroTimer()
+
+  const { conteudos: timerConteudos, fetchConteudos: fetchTimerConteudos } = useConteudos()
+
+  // Fetch conteudos when timer materia changes
+  useEffect(() => {
+    if (timerMateriaId) {
+      fetchTimerConteudos(timerMateriaId)
+    }
+  }, [timerMateriaId, fetchTimerConteudos])
 
   // --- Semester filter ---
   const semestresDisponiveis = useMemo(() => {
@@ -338,6 +350,52 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   }, [materiasFiltradas, monthlyGoals])
 
   // ========================================
+  // Sessions table
+  // ========================================
+  const [sessionFilterMateriaId, setSessionFilterMateriaId] = useState('')
+  const [sessionFilterConteudoId, setSessionFilterConteudoId] = useState('')
+  const { conteudos: filterConteudos, fetchConteudos: fetchFilterConteudos, fetchConteudosByMaterias } = useConteudos()
+  const [allConteudos, setAllConteudos] = useState<import('@/types').Conteudo[]>([])
+
+  // Fetch all conteudos for the semester to resolve names in the table
+  useEffect(() => {
+    const ids = materiasFiltradas.map(m => m.id)
+    if (ids.length > 0) {
+      fetchConteudosByMaterias(ids).then(setAllConteudos)
+    }
+  }, [materiasFiltradas, fetchConteudosByMaterias])
+
+  useEffect(() => {
+    if (sessionFilterMateriaId) {
+      fetchFilterConteudos(sessionFilterMateriaId)
+    }
+  }, [sessionFilterMateriaId, fetchFilterConteudos])
+
+  const displayedSessions = useMemo(() => {
+    let result = filteredSessions
+    if (sessionFilterMateriaId) {
+      result = result.filter(s => s.materia_id === sessionFilterMateriaId)
+    }
+    if (sessionFilterConteudoId) {
+      result = result.filter(s => s.conteudo_id === sessionFilterConteudoId)
+    }
+    return [...result].sort((a, b) => {
+      if (a.studied_at !== b.studied_at) return b.studied_at.localeCompare(a.studied_at)
+      return b.created_at.localeCompare(a.created_at)
+    })
+  }, [filteredSessions, sessionFilterMateriaId, sessionFilterConteudoId])
+
+  const handleDeleteSession = async (id: string) => {
+    if (!confirm('Excluir esta sessão?')) return
+    try {
+      await deleteSession(id)
+      toast.success('Sessão excluída!')
+    } catch (error: unknown) {
+      toast.error('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+    }
+  }
+
+  // ========================================
   // Render
   // ========================================
   if (loading) {
@@ -418,28 +476,51 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
               <h3 className="font-semibold text-lg">Pomodoro</h3>
             </div>
 
-            {/* Materia selector */}
-            <div className="space-y-2">
-              <Label className="text-sm">Matéria</Label>
-              <Select
-                value={timerMateriaId}
-                onValueChange={setTimerMateriaId}
-                disabled={isRunning}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a matéria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {materiasFiltradas.map(m => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <span className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
-                        {m.nome}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Materia + Conteudo selectors */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Matéria</Label>
+                <Select
+                  value={timerMateriaId}
+                  onValueChange={setTimerMateriaId}
+                  disabled={isRunning}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a matéria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materiasFiltradas.map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                          {m.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Conteúdo</Label>
+                <Select
+                  value={timerConteudoId || '_all'}
+                  onValueChange={v => setTimerConteudoId(v === '_all' ? '' : v)}
+                  disabled={!timerMateriaId || isRunning}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os conteúdos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">Todos os conteúdos</SelectItem>
+                    {timerConteudos.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Alarm type selector */}
@@ -666,6 +747,122 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
               />
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Sessions Table */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <List className="h-5 w-5 text-indigo-600" />
+            <h3 className="font-semibold text-lg">Sessões Registradas</h3>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mb-4">
+            <Select
+              value={sessionFilterMateriaId || '_all'}
+              onValueChange={v => {
+                setSessionFilterMateriaId(v === '_all' ? '' : v)
+                setSessionFilterConteudoId('')
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Todas as matérias" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todas as matérias</SelectItem>
+                {materiasFiltradas.map(m => (
+                  <SelectItem key={m.id} value={m.id}>
+                    <span className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                      {m.nome}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={sessionFilterConteudoId || '_all'}
+              onValueChange={v => setSessionFilterConteudoId(v === '_all' ? '' : v)}
+              disabled={!sessionFilterMateriaId}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Todos os conteúdos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todos os conteúdos</SelectItem>
+                {filterConteudos.map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {displayedSessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <Clock className="h-10 w-10 mb-3" />
+              <p className="text-sm text-center">
+                Nenhuma sessão encontrada.<br />
+                Use o Pomodoro para registrar sessões de estudo!
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-auto max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Matéria</TableHead>
+                    <TableHead>Conteúdo</TableHead>
+                    <TableHead className="text-right">Duração</TableHead>
+                    <TableHead className="w-[50px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayedSessions.map(session => {
+                    const mat = materias.find(m => m.id === session.materia_id)
+                    const conteudo = session.conteudo_id
+                      ? allConteudos.find(c => c.id === session.conteudo_id)
+                      : null
+                    const hours = Math.floor(session.duration_minutes / 60)
+                    const mins = session.duration_minutes % 60
+                    const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
+
+                    return (
+                      <TableRow key={session.id}>
+                        <TableCell className="text-sm">
+                          {format(new Date(session.studied_at + 'T00:00:00'), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex items-center gap-2 text-sm">
+                            {mat && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: mat.cor }} />}
+                            {mat?.nome || '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {conteudo?.nome || '—'}
+                        </TableCell>
+                        <TableCell className="text-sm text-right font-medium">
+                          {durationStr}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => handleDeleteSession(session.id)}
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
