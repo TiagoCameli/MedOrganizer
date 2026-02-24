@@ -12,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Clock, Loader2, Filter } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Plus, Pencil, Trash2, Clock, Loader2, Filter, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
+import { GradeEstudo } from './GradeEstudo'
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 const DIAS_GRID = [1, 2, 3, 4, 5, 6] // Segunda a Sábado
@@ -179,238 +181,260 @@ export default function HorariosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Grade Horária</h1>
-          <p className="text-muted-foreground">Sua grade semanal de aulas</p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
-          <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              <Plus className="mr-2 h-4 w-4" /> Novo Horário
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingHorario ? 'Editar Horário' : 'Novo Horário'}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Semestre *</Label>
-                <Select value={formSemestre} onValueChange={(val) => { setFormSemestre(val); setMateriaId('') }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
+      <div>
+        <h1 className="text-2xl font-bold">Grade</h1>
+        <p className="text-muted-foreground">Grade horária e planejamento de estudo</p>
+      </div>
+
+      <Tabs defaultValue="aulas">
+        <TabsList>
+          <TabsTrigger value="aulas">
+            <Clock className="mr-2 h-4 w-4" /> Grade de Aulas
+          </TabsTrigger>
+          <TabsTrigger value="estudo">
+            <BookOpen className="mr-2 h-4 w-4" /> Grade de Estudo
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="aulas">
+          <div className="space-y-6">
+            {/* Header with add button */}
+            <div className="flex items-center justify-between">
+              <div />
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Plus className="mr-2 h-4 w-4" /> Novo Horário
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingHorario ? 'Editar Horário' : 'Novo Horário'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Semestre *</Label>
+                      <Select value={formSemestre} onValueChange={(val) => { setFormSemestre(val); setMateriaId('') }}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                            <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Matéria *</Label>
+                      {!formSemestre ? (
+                        <p className="text-sm text-muted-foreground py-2">Selecione o semestre primeiro</p>
+                      ) : materiasFiltradas.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">Nenhuma matéria cadastrada no {formSemestre}º semestre</p>
+                      ) : (
+                        <Select value={materiaId} onValueChange={setMateriaId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione a matéria" /></SelectTrigger>
+                          <SelectContent>
+                            {materiasFiltradas.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                <span className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                                  {m.nome}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Dia da Semana *</Label>
+                      <Select value={diaSemana} onValueChange={setDiaSemana}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DIAS_SEMANA.map((dia, i) => (
+                            <SelectItem key={i} value={String(i)}>{dia}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Início *</Label>
+                        <Input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Término *</Label>
+                        <Input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Local (opcional)</Label>
+                      <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Sala 201" />
+                    </div>
+                    <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                      {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {editingHorario ? 'Atualizar' : 'Adicionar'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Filtro por semestre */}
+            {semestresDisponiveis.length > 0 && (
+              <div className="flex items-center gap-3">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={filtroSemestre} onValueChange={setFiltroSemestre}>
+                  <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                    <SelectItem value="todos">Todos os semestres</SelectItem>
+                    {semestresDisponiveis.map(s => (
                       <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Matéria *</Label>
-                {!formSemestre ? (
-                  <p className="text-sm text-muted-foreground py-2">Selecione o semestre primeiro</p>
-                ) : materiasFiltradas.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">Nenhuma matéria cadastrada no {formSemestre}º semestre</p>
-                ) : (
-                  <Select value={materiaId} onValueChange={setMateriaId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione a matéria" /></SelectTrigger>
-                    <SelectContent>
-                      {materiasFiltradas.map(m => (
-                        <SelectItem key={m.id} value={m.id}>
-                          <span className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: m.cor }} />
-                            {m.nome}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {filtroSemestre !== 'todos' && (
+                  <Badge variant="secondary">{horariosFiltrados.length} aula(s)</Badge>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label>Dia da Semana *</Label>
-                <Select value={diaSemana} onValueChange={setDiaSemana}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DIAS_SEMANA.map((dia, i) => (
-                      <SelectItem key={i} value={String(i)}>{dia}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Início *</Label>
-                  <Input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Término *</Label>
-                  <Input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Local (opcional)</Label>
-                <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Sala 201" />
-              </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingHorario ? 'Atualizar' : 'Adicionar'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            )}
 
-      {/* Filtro por semestre */}
-      {semestresDisponiveis.length > 0 && (
-        <div className="flex items-center gap-3">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filtroSemestre} onValueChange={setFiltroSemestre}>
-            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os semestres</SelectItem>
-              {semestresDisponiveis.map(s => (
-                <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {filtroSemestre !== 'todos' && (
-            <Badge variant="secondary">{horariosFiltrados.length} aula(s)</Badge>
-          )}
-        </div>
-      )}
-
-      {materias.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              Cadastre matérias primeiro para criar sua grade horária.
-            </p>
-          </CardContent>
-        </Card>
-      ) : horarios.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              Nenhum horário cadastrado ainda.<br />
-              Adicione sua primeira aula!
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="overflow-x-auto">
-          <div className="min-w-[800px]">
-            {/* Header */}
-            <div className="grid gap-px bg-border rounded-t-lg overflow-hidden" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
-              <div className="bg-muted p-3 text-center text-sm font-medium">Horário</div>
-              {DIAS_GRID.map(dia => {
-                const isFeriado = !!weekFeriados[dia]?.feriado
-                return (
-                  <div
-                    key={dia}
-                    className={`bg-muted p-3 text-center font-medium ${
-                      dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
-                    } ${isFeriado ? 'bg-amber-50 dark:bg-amber-950' : ''}`}
-                  >
-                    <div className="text-sm">{DIAS_SEMANA[dia]}</div>
-                    <div className={`text-lg font-bold ${dia === currentDay ? '' : 'text-muted-foreground'}`}>{weekDates[dia]}</div>
-                    {isFeriado && <Badge className="bg-amber-500 text-white text-[10px] mt-1">Feriado</Badge>}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Body */}
-            <div className="grid gap-px bg-border rounded-b-lg" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
-              {/* Time labels column */}
-              <div className="bg-background relative" style={{ height: totalGridHeight }}>
-                {visibleHours.map((hora, i) => (
-                  <div
-                    key={hora}
-                    className="absolute left-0 right-0 flex items-center justify-center"
-                    style={{ top: i * PIXELS_PER_HOUR - 8, height: 16 }}
-                  >
-                    <span className="text-[11px] text-muted-foreground bg-background px-1 leading-none">{hora}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Day columns */}
-              {DIAS_GRID.map(dia => {
-                const dayHorarios = getHorariosForDay(dia)
-                const diaFeriado = weekFeriados[dia]?.feriado
-                return (
-                  <div
-                    key={dia}
-                    className="bg-background relative"
-                    style={{ height: totalGridHeight }}
-                  >
-                    {/* Hour grid lines */}
-                    {visibleHours.map((hora, i) => (
-                      <div
-                        key={hora}
-                        className="absolute left-0 right-0 border-t border-border/50"
-                        style={{ top: i * PIXELS_PER_HOUR }}
-                      />
-                    ))}
-
-                    {/* Feriado overlay */}
-                    {diaFeriado && (
-                      <div className="absolute inset-0 z-20 flex items-center justify-center bg-amber-100/70 dark:bg-amber-950/70">
-                        <div className="text-center px-2">
-                          <div className="text-amber-700 dark:text-amber-400 font-semibold text-sm">Feriado</div>
-                          <div className="text-amber-600 dark:text-amber-500 text-xs mt-1">{diaFeriado}</div>
-                          <div className="text-amber-600/80 dark:text-amber-500/80 text-[10px] mt-0.5">Sem aulas</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Class blocks */}
-                    {dayHorarios.map(h => {
-                      const materia = materias.find(m => m.id === h.materia_id)
-                      const happening = isHappeningNow(h)
-                      const startMin = timeToMinutes(h.hora_inicio)
-                      const endMin = timeToMinutes(h.hora_fim)
-                      const top = ((startMin - gridStartMinutes) / 60) * PIXELS_PER_HOUR
-                      const height = ((endMin - startMin) / 60) * PIXELS_PER_HOUR
-
+            {materias.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center">
+                    Cadastre matérias primeiro para criar sua grade horária.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : horarios.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-center">
+                    Nenhum horário cadastrado ainda.<br />
+                    Adicione sua primeira aula!
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[800px]">
+                  {/* Header */}
+                  <div className="grid gap-px bg-border rounded-t-lg overflow-hidden" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
+                    <div className="bg-muted p-3 text-center text-sm font-medium">Horário</div>
+                    {DIAS_GRID.map(dia => {
+                      const isFeriado = !!weekFeriados[dia]?.feriado
                       return (
                         <div
-                          key={h.id}
-                          className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-xs text-white group overflow-hidden z-10 ${
-                            happening && !diaFeriado ? 'ring-2 ring-green-400 ring-offset-1' : ''
-                          } ${diaFeriado ? 'opacity-30' : ''}`}
-                          style={{
-                            backgroundColor: materia?.cor || '#6366f1',
-                            top: top + 1,
-                            height: height - 2,
-                          }}
+                          key={dia}
+                          className={`bg-muted p-3 text-center font-medium ${
+                            dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
+                          } ${isFeriado ? 'bg-amber-50 dark:bg-amber-950' : ''}`}
                         >
-                          <div className="font-medium truncate">{materia?.nome}</div>
-                          <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
-                          {h.local && <div className="opacity-80">{h.local}</div>}
-                          {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
-                          <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                            <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
+                          <div className="text-sm">{DIAS_SEMANA[dia]}</div>
+                          <div className={`text-lg font-bold ${dia === currentDay ? '' : 'text-muted-foreground'}`}>{weekDates[dia]}</div>
+                          {isFeriado && <Badge className="bg-amber-500 text-white text-[10px] mt-1">Feriado</Badge>}
                         </div>
                       )
                     })}
                   </div>
-                )
-              })}
-            </div>
+
+                  {/* Body */}
+                  <div className="grid gap-px bg-border rounded-b-lg" style={{ gridTemplateColumns: '60px repeat(6, 1fr)' }}>
+                    {/* Time labels column */}
+                    <div className="bg-background relative" style={{ height: totalGridHeight }}>
+                      {visibleHours.map((hora, i) => (
+                        <div
+                          key={hora}
+                          className="absolute left-0 right-0 flex items-center justify-center"
+                          style={{ top: i * PIXELS_PER_HOUR - 8, height: 16 }}
+                        >
+                          <span className="text-[11px] text-muted-foreground bg-background px-1 leading-none">{hora}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Day columns */}
+                    {DIAS_GRID.map(dia => {
+                      const dayHorarios = getHorariosForDay(dia)
+                      const diaFeriado = weekFeriados[dia]?.feriado
+                      return (
+                        <div
+                          key={dia}
+                          className="bg-background relative"
+                          style={{ height: totalGridHeight }}
+                        >
+                          {/* Hour grid lines */}
+                          {visibleHours.map((hora, i) => (
+                            <div
+                              key={hora}
+                              className="absolute left-0 right-0 border-t border-border/50"
+                              style={{ top: i * PIXELS_PER_HOUR }}
+                            />
+                          ))}
+
+                          {/* Feriado overlay */}
+                          {diaFeriado && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-amber-100/70 dark:bg-amber-950/70">
+                              <div className="text-center px-2">
+                                <div className="text-amber-700 dark:text-amber-400 font-semibold text-sm">Feriado</div>
+                                <div className="text-amber-600 dark:text-amber-500 text-xs mt-1">{diaFeriado}</div>
+                                <div className="text-amber-600/80 dark:text-amber-500/80 text-[10px] mt-0.5">Sem aulas</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Class blocks */}
+                          {dayHorarios.map(h => {
+                            const materia = materias.find(m => m.id === h.materia_id)
+                            const happening = isHappeningNow(h)
+                            const startMin = timeToMinutes(h.hora_inicio)
+                            const endMin = timeToMinutes(h.hora_fim)
+                            const top = ((startMin - gridStartMinutes) / 60) * PIXELS_PER_HOUR
+                            const height = ((endMin - startMin) / 60) * PIXELS_PER_HOUR
+
+                            return (
+                              <div
+                                key={h.id}
+                                className={`absolute left-1 right-1 rounded-md px-2 py-1.5 text-xs text-white group overflow-hidden z-10 ${
+                                  happening && !diaFeriado ? 'ring-2 ring-green-400 ring-offset-1' : ''
+                                } ${diaFeriado ? 'opacity-30' : ''}`}
+                                style={{
+                                  backgroundColor: materia?.cor || '#6366f1',
+                                  top: top + 1,
+                                  height: height - 2,
+                                }}
+                              >
+                                <div className="font-medium truncate">{materia?.nome}</div>
+                                <div className="opacity-80">{h.hora_inicio.slice(0, 5)} - {h.hora_fim.slice(0, 5)}</div>
+                                {h.local && <div className="opacity-80">{h.local}</div>}
+                                {happening && <div className="text-green-200 font-medium mt-1">Agora</div>}
+                                <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                                  <button onClick={() => openEdit(h)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                  <button onClick={() => handleDelete(h.id)} className="p-1 bg-white/20 rounded hover:bg-white/40">
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="estudo">
+          <GradeEstudo materias={materias} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

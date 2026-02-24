@@ -75,3 +75,21 @@ export interface Flashcard {
   resposta: string
   created_at: string
 }
+
+export interface StudySession {
+  id: string
+  user_id: string
+  materia_id: string
+  duration_minutes: number
+  studied_at: string // YYYY-MM-DD
+  created_at: string
+}
+
+export interface StudyGoal {
+  id: string
+  user_id: string
+  materia_id: string
+  horas_meta: number
+  tipo: 'semanal' | 'mensal'
+  created_at: string
+}
