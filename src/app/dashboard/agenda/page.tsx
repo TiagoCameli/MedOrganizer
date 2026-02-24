@@ -349,166 +349,6 @@ export default function AgendaPage() {
         </Select>
       </div>
 
-      {/* Períodos dos Semestres */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Settings2 className="h-4 w-4 text-indigo-600" />
-              Períodos dos Semestres
-            </CardTitle>
-            <Dialog open={semDialogOpen} onOpenChange={(open) => { setSemDialogOpen(open); if (!open) { setSemNumero(''); setSemInicio(''); setSemFim('') } }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus className="mr-1 h-3 w-3" /> Definir Período
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Período do Semestre</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Semestre *</Label>
-                    <Select value={semNumero} onValueChange={setSemNumero}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
-                          <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Data de Início *</Label>
-                      <Input type="date" value={semInicio} onChange={(e) => setSemInicio(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Data de Término *</Label>
-                      <Input type="date" value={semFim} onChange={(e) => setSemFim(e.target.value)} />
-                    </div>
-                  </div>
-                  <Button onClick={handleSaveSemestre} disabled={savingSem} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                    {savingSem && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {semestres.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Nenhum período definido. Clique em &quot;Definir Período&quot; para configurar.
-            </p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {semestres.map(sem => {
-                const now = new Date()
-                const inicio = new Date(sem.data_inicio + 'T00:00:00')
-                const fim = new Date(sem.data_fim + 'T23:59:59')
-                const isActive = now >= inicio && now <= fim
-                return (
-                  <div
-                    key={sem.id}
-                    className={`flex items-center justify-between rounded-lg border p-3 text-sm ${
-                      isActive ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {sem.numero}º Semestre
-                        {isActive && <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Atual</Badge>}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(inicio, 'dd/MM/yyyy')} — {format(fim, 'dd/MM/yyyy')}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSemestre(sem)}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSemestre(sem.id)}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Feriados */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <PartyPopper className="h-4 w-4 text-amber-600" />
-              Feriados
-            </CardTitle>
-            <Dialog open={feriadoDialogOpen} onOpenChange={(open) => { setFeriadoDialogOpen(open); if (!open) { setFeriadoData(''); setFeriadoDescricao('') } }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus className="mr-1 h-3 w-3" /> Adicionar Feriado
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Novo Feriado</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Data *</Label>
-                    <Input type="date" value={feriadoData} onChange={(e) => setFeriadoData(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Descrição *</Label>
-                    <Input value={feriadoDescricao} onChange={(e) => setFeriadoDescricao(e.target.value)} placeholder="Ex: Feriado Nacional" />
-                  </div>
-                  <Button onClick={handleSaveFeriado} disabled={savingFeriado} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                    {savingFeriado && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Adicionar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {feriados.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Nenhum feriado cadastrado. Clique em &quot;Adicionar Feriado&quot; para configurar.
-            </p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {feriados.map(feriado => {
-                const feriadoDate = new Date(feriado.data + 'T00:00:00')
-                return (
-                  <div
-                    key={feriado.id}
-                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                  >
-                    <div>
-                      <div className="font-medium">{feriado.descricao}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(feriadoDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteFeriado(feriado.id)}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Calendar */}
       <Card>
         <CardContent className="p-4">
@@ -679,6 +519,166 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+
+      {/* Feriados */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <PartyPopper className="h-4 w-4 text-amber-600" />
+              Feriados
+            </CardTitle>
+            <Dialog open={feriadoDialogOpen} onOpenChange={(open) => { setFeriadoDialogOpen(open); if (!open) { setFeriadoData(''); setFeriadoDescricao('') } }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-1 h-3 w-3" /> Adicionar Feriado
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Feriado</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Data *</Label>
+                    <Input type="date" value={feriadoData} onChange={(e) => setFeriadoData(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição *</Label>
+                    <Input value={feriadoDescricao} onChange={(e) => setFeriadoDescricao(e.target.value)} placeholder="Ex: Feriado Nacional" />
+                  </div>
+                  <Button onClick={handleSaveFeriado} disabled={savingFeriado} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                    {savingFeriado && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Adicionar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {feriados.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Nenhum feriado cadastrado. Clique em &quot;Adicionar Feriado&quot; para configurar.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {feriados.map(feriado => {
+                const feriadoDate = new Date(feriado.data + 'T00:00:00')
+                return (
+                  <div
+                    key={feriado.id}
+                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium">{feriado.descricao}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(feriadoDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteFeriado(feriado.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Períodos dos Semestres */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Settings2 className="h-4 w-4 text-indigo-600" />
+              Períodos dos Semestres
+            </CardTitle>
+            <Dialog open={semDialogOpen} onOpenChange={(open) => { setSemDialogOpen(open); if (!open) { setSemNumero(''); setSemInicio(''); setSemFim('') } }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-1 h-3 w-3" /> Definir Período
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Período do Semestre</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Semestre *</Label>
+                    <Select value={semNumero} onValueChange={setSemNumero}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o semestre" /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(s => (
+                          <SelectItem key={s} value={String(s)}>{s}º Semestre</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data de Início *</Label>
+                      <Input type="date" value={semInicio} onChange={(e) => setSemInicio(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data de Término *</Label>
+                      <Input type="date" value={semFim} onChange={(e) => setSemFim(e.target.value)} />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveSemestre} disabled={savingSem} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                    {savingSem && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {semestres.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              Nenhum período definido. Clique em &quot;Definir Período&quot; para configurar.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {semestres.map(sem => {
+                const now = new Date()
+                const inicio = new Date(sem.data_inicio + 'T00:00:00')
+                const fim = new Date(sem.data_fim + 'T23:59:59')
+                const isActive = now >= inicio && now <= fim
+                return (
+                  <div
+                    key={sem.id}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-sm ${
+                      isActive ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''
+                    }`}
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {sem.numero}º Semestre
+                        {isActive && <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Atual</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(inicio, 'dd/MM/yyyy')} — {format(fim, 'dd/MM/yyyy')}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSemestre(sem)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSemestre(sem.id)}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
