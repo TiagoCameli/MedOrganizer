@@ -6,5 +6,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/cadastro'],
+  matcher: ['/dashboard/:path*', '/login', '/cadastro', '/redefinir-senha'],
 }

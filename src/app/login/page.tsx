@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -34,6 +35,23 @@ export default function LoginPage() {
     } else {
       toast.success('Login realizado com sucesso!')
       router.push('/dashboard')
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error('Digite seu email primeiro')
+      return
+    }
+    setResetLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/redefinir-senha`,
+    })
+    setResetLoading(false)
+    if (error) {
+      toast.error('Erro: ' + error.message)
+    } else {
+      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.')
     }
   }
 
@@ -69,6 +87,16 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="text-xs text-indigo-600 hover:underline disabled:opacity-50"
+              >
+                {resetLoading ? 'Enviando...' : 'Esqueci minha senha'}
+              </button>
             </div>
             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
