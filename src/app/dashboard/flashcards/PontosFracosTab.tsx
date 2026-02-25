@@ -142,7 +142,7 @@ export default function PontosFracosTab() {
           <h1 className="text-2xl font-bold">Pontos Fracos</h1>
           <p className="text-muted-foreground">Identifique e acompanhe seus pontos fracos</p>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={openNew}>
+        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Novo Ponto Fraco
         </Button>
       </div>
@@ -201,7 +201,7 @@ export default function PontosFracosTab() {
           </h2>
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
             </div>
           ) : computedWeaknesses.length === 0 ? (
             <Card>
@@ -391,7 +391,7 @@ export default function PontosFracosTab() {
                 rows={3}
               />
             </div>
-            <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingWeakness ? 'Atualizar' : 'Adicionar'}
             </Button>

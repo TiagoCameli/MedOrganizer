@@ -520,7 +520,7 @@ export default function FlashcardsTab() {
       return <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">Invertido</Badge>
     }
     if (card.type === 'cloze') {
-      return <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão</Badge>
+      return <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">Omissão</Badge>
     }
     return null
   }
@@ -528,7 +528,7 @@ export default function FlashcardsTab() {
   if (loadingMaterias) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -560,7 +560,7 @@ export default function FlashcardsTab() {
         {/* Progress bar */}
         <div className="w-full bg-muted rounded-full h-2">
           <div
-            className="h-2 rounded-full bg-indigo-600 transition-all"
+            className="h-2 rounded-full bg-emerald-600 transition-all"
             style={{ width: `${((studyIndex + 1) / studyCards.length) * 100}%` }}
           />
         </div>
@@ -569,7 +569,7 @@ export default function FlashcardsTab() {
           className="cursor-pointer"
           onClick={() => setStudyFlipped(!studyFlipped)}
         >
-          <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-indigo-300 transition-colors">
+          <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-emerald-300 transition-colors">
             <CardContent className="flex flex-col items-center justify-center p-8 text-center">
               <div className="flex gap-2 mb-4 flex-wrap justify-center">
                 <Badge variant="secondary">
@@ -673,7 +673,7 @@ export default function FlashcardsTab() {
           {selectedMateria && (
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
               <DialogTrigger asChild>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                   <Plus className="mr-2 h-4 w-4" /> Novo Flashcard
                 </Button>
               </DialogTrigger>
@@ -694,8 +694,8 @@ export default function FlashcardsTab() {
                             onClick={() => setFlashcardType(type)}
                             className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-colors text-center ${
                               flashcardType === type
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-background text-foreground border-border hover:border-indigo-300'
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-background text-foreground border-border hover:border-emerald-300'
                             }`}
                           >
                             {type === 'basico' && <Type className="h-3.5 w-3.5 mx-auto mb-1" />}
@@ -812,7 +812,7 @@ export default function FlashcardsTab() {
                     </p>
                   )}
 
-                  <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {editingFlashcard ? 'Atualizar' : 'Criar'}
                   </Button>
@@ -841,7 +841,7 @@ export default function FlashcardsTab() {
               <div
                 key={s}
                 className={`h-1 flex-1 rounded-full transition-colors ${
-                  s <= studyStep ? 'bg-indigo-600' : 'bg-muted'
+                  s <= studyStep ? 'bg-emerald-600' : 'bg-muted'
                 }`}
               />
             ))}
@@ -861,8 +861,8 @@ export default function FlashcardsTab() {
                     onClick={() => toggleStudySemestre(sem)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${
                       studySemestres.has(sem)
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-background text-foreground border-border hover:border-indigo-300'
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-background text-foreground border-border hover:border-emerald-300'
                     }`}
                   >
                     {sem}º Semestre
@@ -892,13 +892,13 @@ export default function FlashcardsTab() {
                   onClick={toggleAllStudyMaterias}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
                     studyMaterias.size === wizardMaterias.length
-                      ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                      : 'border-border hover:border-indigo-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 text-emerald-700 dark:text-emerald-300'
+                      : 'border-border hover:border-emerald-300'
                   }`}
                 >
                   <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                     studyMaterias.size === wizardMaterias.length
-                      ? 'bg-indigo-600 border-indigo-600'
+                      ? 'bg-emerald-600 border-emerald-600'
                       : 'border-muted-foreground'
                   }`}>
                     {studyMaterias.size === wizardMaterias.length && <Check className="h-3 w-3 text-white" />}
@@ -914,13 +914,13 @@ export default function FlashcardsTab() {
                     onClick={() => toggleStudyMateria(mat.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm ${
                       studyMaterias.has(mat.id)
-                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
-                        : 'border-border hover:border-indigo-300'
+                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950'
+                        : 'border-border hover:border-emerald-300'
                     }`}
                   >
                     <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                       studyMaterias.has(mat.id)
-                        ? 'bg-indigo-600 border-indigo-600'
+                        ? 'bg-emerald-600 border-emerald-600'
                         : 'border-muted-foreground'
                     }`}>
                       {studyMaterias.has(mat.id) && <Check className="h-3 w-3 text-white" />}
@@ -949,7 +949,7 @@ export default function FlashcardsTab() {
 
               {studyLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                  <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
                 </div>
               ) : (
                 <>
@@ -961,13 +961,13 @@ export default function FlashcardsTab() {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-colors text-sm font-medium ${
                       studyAllConteudos
-                        ? 'bg-indigo-50 dark:bg-indigo-950 border-indigo-600 text-indigo-700 dark:text-indigo-300'
-                        : 'border-border hover:border-indigo-300'
+                        ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 text-emerald-700 dark:text-emerald-300'
+                        : 'border-border hover:border-emerald-300'
                     }`}
                   >
                     <div className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                       studyAllConteudos
-                        ? 'bg-indigo-600 border-indigo-600'
+                        ? 'bg-emerald-600 border-emerald-600'
                         : 'border-muted-foreground'
                     }`}>
                       {studyAllConteudos && <Check className="h-3 w-3 text-white" />}
@@ -1000,13 +1000,13 @@ export default function FlashcardsTab() {
                                   onClick={() => toggleStudyConteudo(c.id)}
                                   className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg border transition-colors text-sm ${
                                     studyConteudos.has(c.id)
-                                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950'
-                                      : 'border-border hover:border-indigo-300'
+                                      ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950'
+                                      : 'border-border hover:border-emerald-300'
                                   }`}
                                 >
                                   <div className={`h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                                     studyConteudos.has(c.id)
-                                      ? 'bg-indigo-600 border-indigo-600'
+                                      ? 'bg-emerald-600 border-emerald-600'
                                       : 'border-muted-foreground'
                                   }`}>
                                     {studyConteudos.has(c.id) && <Check className="h-2.5 w-2.5 text-white" />}
@@ -1040,7 +1040,7 @@ export default function FlashcardsTab() {
 
             {studyStep < 3 ? (
               <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={
                   (studyStep === 1 && studySemestres.size === 0) ||
                   (studyStep === 2 && studyMaterias.size === 0)
@@ -1051,7 +1051,7 @@ export default function FlashcardsTab() {
               </Button>
             ) : (
               <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={studyLoading || (!studyAllConteudos && studyConteudos.size === 0)}
                 onClick={wizardStart}
               >
@@ -1090,8 +1090,8 @@ export default function FlashcardsTab() {
                   onClick={() => toggleSemestre(sem)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                     selectedSemestres.has(sem)
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-background text-muted-foreground border-border hover:border-emerald-300'
                   }`}
                 >
                   {sem}º
@@ -1134,8 +1134,8 @@ export default function FlashcardsTab() {
                   onClick={() => setSelectedConteudo('')}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                     selectedConteudo === ''
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-background text-muted-foreground border-border hover:border-emerald-300'
                   }`}
                 >
                   Todos
@@ -1146,8 +1146,8 @@ export default function FlashcardsTab() {
                       onClick={() => setSelectedConteudo(conteudo.id)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                         selectedConteudo === conteudo.id
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-background text-muted-foreground border-border hover:border-emerald-300'
                       }`}
                     >
                       {conteudo.nome}
@@ -1164,7 +1164,7 @@ export default function FlashcardsTab() {
                 <Popover open={newConteudoOpen} onOpenChange={setNewConteudoOpen}>
                   <PopoverTrigger asChild>
                     <button
-                      className="px-2 py-1 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                      className="px-2 py-1 rounded-full text-xs font-medium border border-dashed border-border text-muted-foreground hover:border-emerald-300 hover:text-emerald-600 transition-colors"
                       title="Novo conteúdo"
                     >
                       <Plus className="h-3 w-3" />
@@ -1183,7 +1183,7 @@ export default function FlashcardsTab() {
                         />
                         <Button
                           size="sm"
-                          className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
                           onClick={handleAddConteudo}
                           disabled={savingConteudo || !newConteudoNome.trim()}
                         >
@@ -1197,7 +1197,7 @@ export default function FlashcardsTab() {
 
               {loading ? (
                 <div className="flex items-center justify-center h-32">
-                  <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                  <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
                 </div>
               ) : flashcardGroups.length === 0 ? (
                 <Card>
@@ -1221,7 +1221,7 @@ export default function FlashcardsTab() {
                     return (
                       <Card
                         key={groupKey}
-                        className="cursor-pointer hover:border-indigo-300 transition-colors overflow-hidden"
+                        className="cursor-pointer hover:border-emerald-300 transition-colors overflow-hidden"
                         onClick={() => toggleFlip(groupKey)}
                       >
                         <div className="h-1.5" style={{ backgroundColor: materia.cor }} />
@@ -1242,7 +1242,7 @@ export default function FlashcardsTab() {
                                 </Badge>
                               )}
                               {group.type === 'cloze' && (
-                                <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">
+                                <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">
                                   Omissão ({group.card_count} cards)
                                 </Badge>
                               )}

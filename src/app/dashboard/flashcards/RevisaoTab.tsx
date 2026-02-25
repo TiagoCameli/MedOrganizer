@@ -161,7 +161,7 @@ export default function RevisaoTab() {
         {/* Progress bar */}
         <div className="w-full bg-muted rounded-full h-2">
           <div
-            className="h-2 rounded-full bg-indigo-600 transition-all"
+            className="h-2 rounded-full bg-emerald-600 transition-all"
             style={{ width: `${((studyIndex + 1) / (dueCards.length + studyIndex)) * 100}%` }}
           />
         </div>
@@ -170,7 +170,7 @@ export default function RevisaoTab() {
           className="cursor-pointer"
           onClick={() => setStudyFlipped(!studyFlipped)}
         >
-          <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-indigo-300 transition-colors">
+          <Card className="min-h-[300px] flex items-center justify-center border-2 hover:border-emerald-300 transition-colors">
             <CardContent className="flex flex-col items-center justify-center p-8 text-center">
               <div className="flex gap-2 mb-4 flex-wrap justify-center">
                 <Badge variant="secondary">
@@ -188,7 +188,7 @@ export default function RevisaoTab() {
                   <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">Invertido</Badge>
                 )}
                 {currentCard.type === 'cloze' && (
-                  <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600">Omissão</Badge>
+                  <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600">Omissão</Badge>
                 )}
               </div>
               <p className="text-xl font-medium whitespace-pre-wrap">
@@ -279,7 +279,7 @@ export default function RevisaoTab() {
           <p className="text-muted-foreground">Acompanhe e revise seus flashcards com repetição espaçada</p>
         </div>
         <Button
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
           onClick={startReview}
           disabled={loading || totalDue === 0}
         >
@@ -297,8 +297,8 @@ export default function RevisaoTab() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-indigo-600" />
+              <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{totalDue}</p>
@@ -417,7 +417,7 @@ export default function RevisaoTab() {
 
       {loading && (
         <div className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
         </div>
       )}
     </div>

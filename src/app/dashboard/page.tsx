@@ -74,7 +74,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -92,8 +92,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-lg bg-indigo-100 p-2 dark:bg-indigo-950">
-              <BookOpen className="h-5 w-5 text-indigo-600" />
+            <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-950">
+              <BookOpen className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{materias.length}</p>
@@ -114,8 +114,8 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-lg bg-purple-100 p-2 dark:bg-purple-950">
-              <CalendarDays className="h-5 w-5 text-purple-600" />
+            <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-950">
+              <CalendarDays className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{eventos.filter(e => !e.concluido).length}</p>
@@ -141,7 +141,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-5 w-5 text-indigo-600" />
+              <Clock className="h-5 w-5 text-emerald-600" />
               Aulas de Hoje
             </CardTitle>
           </CardHeader>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
                       key={h.id}
                       className={`flex items-center gap-3 rounded-lg p-3 ${
                         happening
-                          ? 'bg-indigo-50 border border-indigo-200 dark:bg-indigo-950 dark:border-indigo-800'
+                          ? 'bg-emerald-50 border border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800'
                           : 'bg-muted/50'
                       }`}
                     >
@@ -189,7 +189,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <CalendarDays className="h-5 w-5 text-purple-600" />
+              <CalendarDays className="h-5 w-5 text-emerald-600" />
               Próximos Eventos
             </CardTitle>
           </CardHeader>

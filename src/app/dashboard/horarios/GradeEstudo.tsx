@@ -401,7 +401,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -419,8 +419,8 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
               onClick={() => setSelectedSemestre(sem)}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                 selectedSemestre === sem
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-background text-muted-foreground border-border hover:border-emerald-300'
               }`}
             >
               {sem}º
@@ -433,8 +433,8 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-lg bg-indigo-100 p-2 dark:bg-indigo-950">
-              <Clock className="h-5 w-5 text-indigo-600" />
+            <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-950">
+              <Clock className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{totalHoursThisWeek.toFixed(1)}h</p>
@@ -472,7 +472,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
         <Card>
           <CardContent className="p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-indigo-600" />
+              <Clock className="h-5 w-5 text-emerald-600" />
               <h3 className="font-semibold text-lg">Pomodoro</h3>
             </div>
 
@@ -534,7 +534,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
                     disabled={isRunning}
                     className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
                       alarmType === type
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-background text-muted-foreground hover:bg-muted'
                     } disabled:opacity-50`}
                   >
@@ -598,7 +598,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
             <div className="flex justify-center gap-3">
               {!isRunning ? (
                 <Button
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={startTimer}
                 >
                   <Play className="mr-2 h-4 w-4" /> {secondsLeft < focusMinutes * 60 || isBreak ? 'Continuar' : 'Iniciar'}
@@ -632,7 +632,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-indigo-600" />
+                <Target className="h-5 w-5 text-emerald-600" />
                 <h3 className="font-semibold text-lg">
                   Horas por Matéria — {chartPeriod === 'week' ? 'Semana' : format(monthStart, "MMMM 'de' yyyy", { locale: ptBR })}
                 </h3>
@@ -642,7 +642,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
                   onClick={() => setChartPeriod('week')}
                   className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                     chartPeriod === 'week'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : 'bg-background text-muted-foreground hover:bg-muted'
                   }`}
                 >
@@ -652,7 +652,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
                   onClick={() => setChartPeriod('month')}
                   className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                     chartPeriod === 'month'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : 'bg-background text-muted-foreground hover:bg-muted'
                   }`}
                 >
@@ -700,7 +700,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Target className="h-5 w-5 text-indigo-600" />
+            <Target className="h-5 w-5 text-emerald-600" />
             <h3 className="font-semibold text-lg">Metas de Estudo</h3>
           </div>
 
@@ -712,7 +712,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
               </TabsList>
               <Button
                 size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => {
                   const tipo = activeGoalTab
                   const available = tipo === 'semanal' ? materiasWithoutWeeklyGoal : materiasWithoutMonthlyGoal
@@ -754,7 +754,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <List className="h-5 w-5 text-indigo-600" />
+            <List className="h-5 w-5 text-emerald-600" />
             <h3 className="font-semibold text-lg">Sessões Registradas</h3>
           </div>
 
@@ -923,7 +923,7 @@ export function GradeEstudo({ materias, semestreAtual }: GradeEstudoProps) {
             <Button
               onClick={handleSaveGoal}
               disabled={savingGoal}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {savingGoal && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Meta

@@ -4,9 +4,9 @@ import { GraduationCap, Clock, CalendarDays, BookOpen } from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950">
       <header className="container mx-auto flex items-center justify-between p-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-emerald-500 bg-clip-text text-transparent">
           MedOrganizer
         </h1>
         <div className="flex gap-3">
@@ -14,7 +14,7 @@ export default function Home() {
             <Button variant="ghost">Entrar</Button>
           </Link>
           <Link href="/cadastro">
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">Cadastrar</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">Cadastrar</Button>
           </Link>
         </div>
       </header>
@@ -23,7 +23,7 @@ export default function Home() {
         <div className="mx-auto max-w-3xl">
           <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             Organize sua vida acadêmica em{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-700 to-emerald-500 bg-clip-text text-transparent">
               Medicina
             </span>
           </h2>
@@ -33,7 +33,7 @@ export default function Home() {
           </p>
           <div className="mt-10 flex justify-center gap-4">
             <Link href="/cadastro">
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 Começar agora
               </Button>
             </Link>
@@ -47,22 +47,22 @@ export default function Home() {
 
         <div className="mt-24 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 max-w-5xl mx-auto">
           <FeatureCard
-            icon={<Clock className="h-8 w-8 text-indigo-600" />}
+            icon={<Clock className="h-8 w-8 text-emerald-600" />}
             title="Grade Horária"
             description="Visualize sua semana com a grade de aulas organizada por cores."
           />
           <FeatureCard
-            icon={<CalendarDays className="h-8 w-8 text-purple-600" />}
+            icon={<CalendarDays className="h-8 w-8 text-emerald-600" />}
             title="Agenda"
             description="Acompanhe provas, trabalhos e tarefas com alertas de prazo."
           />
           <FeatureCard
-            icon={<GraduationCap className="h-8 w-8 text-indigo-600" />}
+            icon={<GraduationCap className="h-8 w-8 text-emerald-600" />}
             title="Notas"
             description="Calcule médias ponderadas e simule notas para aprovação."
           />
           <FeatureCard
-            icon={<BookOpen className="h-8 w-8 text-purple-600" />}
+            icon={<BookOpen className="h-8 w-8 text-emerald-600" />}
             title="Matérias"
             description="Gerencie todas as disciplinas do semestre em um só lugar."
           />

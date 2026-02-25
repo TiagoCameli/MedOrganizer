@@ -112,7 +112,7 @@ export default function NotasPage() {
   if (loadingMaterias) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -127,7 +127,7 @@ export default function NotasPage() {
         {selectedMateria && (
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
             <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 <Plus className="mr-2 h-4 w-4" /> Nova Nota
               </Button>
             </DialogTrigger>
@@ -150,7 +150,7 @@ export default function NotasPage() {
                     <Input type="number" step="0.1" min="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="Ex: 1.0" />
                   </div>
                 </div>
-                <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingNota ? 'Atualizar' : 'Adicionar'}
                 </Button>
@@ -191,7 +191,7 @@ export default function NotasPage() {
         </Card>
       ) : loading ? (
         <div className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
         </div>
       ) : (
         <>
@@ -264,7 +264,7 @@ export default function NotasPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-indigo-600" />
+                <Calculator className="h-5 w-5 text-emerald-600" />
                 Simulador: Quanto preciso tirar?
               </CardTitle>
             </CardHeader>

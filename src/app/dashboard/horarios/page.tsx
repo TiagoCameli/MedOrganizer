@@ -194,7 +194,7 @@ export default function HorariosPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -230,8 +230,8 @@ export default function HorariosPage() {
                       onClick={() => setFiltroSemestre(sem)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                         filtroSemestre === sem
-                          ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'bg-background text-muted-foreground border-border hover:border-indigo-300'
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-background text-muted-foreground border-border hover:border-emerald-300'
                       }`}
                     >
                       {sem}º
@@ -241,7 +241,7 @@ export default function HorariosPage() {
               ) : <div />}
               <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                     <Plus className="mr-2 h-4 w-4" /> Novo Horário
                   </Button>
                 </DialogTrigger>
@@ -308,7 +308,7 @@ export default function HorariosPage() {
                       <Label>Local (opcional)</Label>
                       <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Sala 201" />
                     </div>
-                    <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                       {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {editingHorario ? 'Atualizar' : 'Adicionar'}
                     </Button>
@@ -348,7 +348,7 @@ export default function HorariosPage() {
                         <div
                           key={dia}
                           className={`bg-muted p-3 text-center font-medium ${
-                            dia === currentDay ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' : ''
+                            dia === currentDay ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : ''
                           } ${isFeriado ? 'bg-amber-50 dark:bg-amber-950' : ''}`}
                         >
                           <div className="text-sm">{DIAS_SEMANA[dia]}</div>

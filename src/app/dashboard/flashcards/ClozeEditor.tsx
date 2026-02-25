@@ -86,8 +86,8 @@ export default function ClozeEditor({ value, onChange }: ClozeEditorProps) {
                   onClick={() => toggleWord(idx)}
                   className={`px-2 py-1 rounded-md text-sm font-medium transition-colors ${
                     isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-background border border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-background border border-border hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950'
                   }`}
                 >
                   {word}

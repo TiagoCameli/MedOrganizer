@@ -140,7 +140,7 @@ export default function MateriasPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -154,7 +154,7 @@ export default function MateriasPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
               <Plus className="mr-2 h-4 w-4" /> Nova Matéria
             </Button>
           </DialogTrigger>
@@ -197,7 +197,7 @@ export default function MateriasPage() {
                 </div>
                 <Input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="w-20 h-10" />
               </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingMateria ? 'Atualizar' : 'Adicionar'}
               </Button>
@@ -221,7 +221,7 @@ export default function MateriasPage() {
           {materiasPorSemestre.map((group) => (
             <div key={group.semestre ?? 'none'}>
               <div className="flex items-center gap-3 mb-4">
-                <GraduationCap className="h-5 w-5 text-indigo-600" />
+                <GraduationCap className="h-5 w-5 text-emerald-600" />
                 <h2 className="text-lg font-semibold">{group.label}</h2>
                 <Badge variant="secondary">{group.materias.length} matéria{group.materias.length !== 1 ? 's' : ''}</Badge>
                 <div className="flex-1 border-t border-border" />

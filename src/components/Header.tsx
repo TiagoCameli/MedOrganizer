@@ -19,7 +19,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
 
-        <h1 className="text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-lg font-semibold bg-gradient-to-r from-emerald-700 to-emerald-500 bg-clip-text text-transparent">
           MedOrganizer
         </h1>
       </div>

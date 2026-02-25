@@ -257,7 +257,7 @@ export default function AgendaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     )
   }
@@ -271,7 +271,7 @@ export default function AgendaPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
               <Plus className="mr-2 h-4 w-4" /> Novo Evento
             </Button>
           </DialogTrigger>
@@ -320,7 +320,7 @@ export default function AgendaPage() {
                 <Label>Descrição (opcional)</Label>
                 <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes adicionais..." />
               </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingEvento ? 'Atualizar' : 'Adicionar'}
               </Button>
@@ -383,11 +383,11 @@ export default function AgendaPage() {
                   key={day.toISOString()}
                   className={`min-h-[80px] p-1 border rounded-md ${
                     !isCurrentMonth ? 'opacity-30' : ''
-                  } ${today ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''} ${
+                  } ${today ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:border-emerald-700' : ''} ${
                     isFeriado && isCurrentMonth ? 'bg-amber-50 border-amber-300 dark:bg-amber-950 dark:border-amber-700' : ''
                   }`}
                 >
-                  <div className={`text-xs font-medium mb-1 flex items-center gap-1 ${today ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                  <div className={`text-xs font-medium mb-1 flex items-center gap-1 ${today ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
                     {format(day, 'd')}
                     {isFeriado && <Badge className="bg-amber-500 text-white text-[9px] px-1 py-0 leading-tight">Feriado</Badge>}
                   </div>
@@ -558,7 +558,7 @@ export default function AgendaPage() {
                     <Label>Descrição *</Label>
                     <Input value={feriadoDescricao} onChange={(e) => setFeriadoDescricao(e.target.value)} placeholder="Ex: Feriado Nacional" />
                   </div>
-                  <Button onClick={handleSaveFeriado} disabled={savingFeriado} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Button onClick={handleSaveFeriado} disabled={savingFeriado} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                     {savingFeriado && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Adicionar
                   </Button>
@@ -603,7 +603,7 @@ export default function AgendaPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Settings2 className="h-4 w-4 text-indigo-600" />
+              <Settings2 className="h-4 w-4 text-emerald-600" />
               Períodos dos Semestres
             </CardTitle>
             <Dialog open={semDialogOpen} onOpenChange={(open) => { setSemDialogOpen(open); if (!open) { setSemNumero(''); setSemInicio(''); setSemFim('') } }}>
@@ -638,7 +638,7 @@ export default function AgendaPage() {
                       <Input type="date" value={semFim} onChange={(e) => setSemFim(e.target.value)} />
                     </div>
                   </div>
-                  <Button onClick={handleSaveSemestre} disabled={savingSem} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Button onClick={handleSaveSemestre} disabled={savingSem} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                     {savingSem && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Salvar
                   </Button>
@@ -663,13 +663,13 @@ export default function AgendaPage() {
                   <div
                     key={sem.id}
                     className={`flex items-center justify-between rounded-lg border p-3 text-sm ${
-                      isActive ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700' : ''
+                      isActive ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:border-emerald-700' : ''
                     }`}
                   >
                     <div>
                       <div className="font-medium">
                         {sem.numero}º Semestre
-                        {isActive && <Badge className="ml-2 bg-indigo-600 text-white text-[10px]">Atual</Badge>}
+                        {isActive && <Badge className="ml-2 bg-emerald-600 text-white text-[10px]">Atual</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {format(inicio, 'dd/MM/yyyy')} — {format(fim, 'dd/MM/yyyy')}

@@ -40,7 +40,7 @@ export function FloatingTimer({ materias }: FloatingTimerProps) {
   return (
     <>
       {showFlash && (
-        <div className="fixed inset-0 z-50 pointer-events-none animate-pulse bg-indigo-500/20" />
+        <div className="fixed inset-0 z-50 pointer-events-none animate-pulse bg-emerald-500/20" />
       )}
 
       {isActive && (
@@ -75,7 +75,7 @@ export function FloatingTimer({ materias }: FloatingTimerProps) {
             {!isRunning ? (
               <button
                 onClick={startTimer}
-                className="p-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
               >
                 <Play className="h-3.5 w-3.5" />
               </button>
