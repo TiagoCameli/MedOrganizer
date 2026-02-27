@@ -147,10 +147,23 @@ export default function ArquivosPage() {
 
   const isSearching = searchQuery.trim().length > 0
 
-  // Subfolders of current folder
+  // Local filter for file browser view
+  const [browserFilter, setBrowserFilter] = useState('')
+
+  // Subfolders of current folder (filtered)
   const currentSubfolders = useMemo(() => {
-    return pastas.filter(p => p.parent_id === currentPastaId)
-  }, [pastas, currentPastaId])
+    const subs = pastas.filter(p => p.parent_id === currentPastaId)
+    if (!browserFilter.trim()) return subs
+    const term = browserFilter.trim().toLowerCase()
+    return subs.filter(p => p.nome.toLowerCase().includes(term))
+  }, [pastas, currentPastaId, browserFilter])
+
+  // Files filtered by browser search
+  const filteredArquivos = useMemo(() => {
+    if (!browserFilter.trim()) return arquivos
+    const term = browserFilter.trim().toLowerCase()
+    return arquivos.filter(a => a.nome.toLowerCase().includes(term))
+  }, [arquivos, browserFilter])
 
   // Select a matéria and navigate into its root folder
   const handleSelectMateria = async (materiaId: string) => {
@@ -176,6 +189,7 @@ export default function ArquivosPage() {
 
   // Navigate into a subfolder
   const handleOpenFolder = async (pasta: Pasta) => {
+    setBrowserFilter('')
     setCurrentPastaId(pasta.id)
     setBreadcrumbs(prev => [...prev, pasta])
     await fetchArquivos(pasta.id)
@@ -263,6 +277,7 @@ export default function ArquivosPage() {
 
   // Breadcrumb navigation
   const handleBreadcrumbClick = async (index: number) => {
+    setBrowserFilter('')
     if (index === -1) {
       setSelectedMateriaId(null)
       setCurrentPastaId(null)
@@ -654,36 +669,55 @@ export default function ArquivosPage() {
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => { setNewFolderName(''); setNewFolderDialogOpen(true) }}
-        >
-          <FolderPlus className="h-4 w-4 mr-1.5" />
-          Nova Pasta
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4 mr-1.5" />
+      {/* Actions + Search */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filtrar pastas e arquivos..."
+            value={browserFilter}
+            onChange={e => setBrowserFilter(e.target.value)}
+            className="pl-9 pr-8"
+          />
+          {browserFilter && (
+            <button
+              onClick={() => setBrowserFilter('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
-          {uploading ? 'Enviando...' : 'Upload'}
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleUpload}
-        />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setNewFolderName(''); setNewFolderDialogOpen(true) }}
+          >
+            <FolderPlus className="h-4 w-4 mr-1.5" />
+            Nova Pasta
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1.5" />
+            )}
+            {uploading ? 'Enviando...' : 'Upload'}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </div>
       </div>
 
       {/* Loading */}
@@ -743,13 +777,13 @@ export default function ArquivosPage() {
           )}
 
           {/* Files */}
-          {arquivos.length > 0 && (
+          {filteredArquivos.length > 0 && (
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Arquivos</p>
               <Card>
                 <CardContent className="p-0">
                   <div className="divide-y">
-                    {arquivos.map(arquivo => {
+                    {filteredArquivos.map(arquivo => {
                       const IconComponent = getFileIcon(arquivo.tipo_mime)
                       return (
                         <div
@@ -799,11 +833,20 @@ export default function ArquivosPage() {
           )}
 
           {/* Empty state */}
-          {currentSubfolders.length === 0 && arquivos.length === 0 && (
+          {currentSubfolders.length === 0 && filteredArquivos.length === 0 && (
             <div className="text-center py-16">
-              <FolderOpen className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-              <p className="text-muted-foreground">Pasta vazia</p>
-              <p className="text-sm text-muted-foreground">Crie uma subpasta ou faça upload de arquivos</p>
+              {browserFilter.trim() ? (
+                <>
+                  <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Nenhum resultado para &ldquo;{browserFilter}&rdquo;</p>
+                </>
+              ) : (
+                <>
+                  <FolderOpen className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Pasta vazia</p>
+                  <p className="text-sm text-muted-foreground">Crie uma subpasta ou faça upload de arquivos</p>
+                </>
+              )}
             </div>
           )}
         </>
