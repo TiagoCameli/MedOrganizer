@@ -218,6 +218,60 @@ export function useArquivos() {
     setArquivos(prev => prev.filter(a => a.id !== id))
   }
 
+  // --- Search ---
+
+  const [searchPastas, setSearchPastas] = useState<Pasta[]>([])
+  const [searchArquivos, setSearchArquivos] = useState<Arquivo[]>([])
+  const [searching, setSearching] = useState(false)
+
+  const searchAll = useCallback(async (query: string, materiaIds?: string[]) => {
+    if (!query.trim()) {
+      setSearchPastas([])
+      setSearchArquivos([])
+      return
+    }
+
+    setSearching(true)
+    const term = `%${query.trim()}%`
+
+    let pastasQuery = supabase
+      .from('pastas')
+      .select('*')
+      .ilike('nome', term)
+      .not('parent_id', 'is', null) // exclude root folders from results
+
+    let arquivosQuery = supabase
+      .from('arquivos')
+      .select('*')
+      .ilike('nome', term)
+
+    if (materiaIds && materiaIds.length > 0) {
+      pastasQuery = pastasQuery.in('materia_id', materiaIds)
+      // For arquivos, filter by pasta_id belonging to those matérias
+      const { data: pastasFiltradas } = await supabase
+        .from('pastas')
+        .select('id')
+        .in('materia_id', materiaIds)
+      if (pastasFiltradas) {
+        arquivosQuery = arquivosQuery.in('pasta_id', pastasFiltradas.map(p => p.id))
+      }
+    }
+
+    const [pastasRes, arquivosRes] = await Promise.all([
+      pastasQuery.order('nome').limit(20),
+      arquivosQuery.order('nome').limit(20),
+    ])
+
+    setSearchPastas(pastasRes.data || [])
+    setSearchArquivos(arquivosRes.data || [])
+    setSearching(false)
+  }, [supabase])
+
+  const clearSearch = useCallback(() => {
+    setSearchPastas([])
+    setSearchArquivos([])
+  }, [])
+
   return {
     pastas, arquivos, loading,
     fetchPastas, fetchArquivos,
@@ -225,5 +279,7 @@ export function useArquivos() {
     uploadArquivo, renameArquivo, deleteArquivo,
     downloadArquivo,
     ensureRootFolder,
+    searchPastas, searchArquivos, searching,
+    searchAll, clearSearch,
   }
 }
