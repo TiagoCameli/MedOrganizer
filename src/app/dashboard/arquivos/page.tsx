@@ -157,17 +157,20 @@ export default function ArquivosPage() {
     const materia = materias.find(m => m.id === materiaId)
     if (!materia) return
 
-    setSelectedMateriaId(materiaId)
     setSearchQuery('')
     clearSearch()
     try {
       const rootFolder = await ensureRootFolder(materiaId, materia.nome)
+      setSelectedMateriaId(materiaId)
       setCurrentPastaId(rootFolder.id)
       setBreadcrumbs([rootFolder])
       await fetchPastas(materiaId)
       await fetchArquivos(rootFolder.id)
     } catch {
       toast.error('Erro ao abrir pasta da matéria')
+      setSelectedMateriaId(null)
+      setCurrentPastaId(null)
+      setBreadcrumbs([])
     }
   }
 
@@ -274,7 +277,11 @@ export default function ArquivosPage() {
 
   // Create subfolder
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim() || !selectedMateriaId || !currentPastaId) return
+    if (!newFolderName.trim()) return
+    if (!selectedMateriaId || !currentPastaId) {
+      toast.error('Erro: pasta raiz não encontrada. Tente reabrir a matéria.')
+      return
+    }
     setSaving(true)
     try {
       await addPasta(newFolderName.trim(), selectedMateriaId, currentPastaId)
