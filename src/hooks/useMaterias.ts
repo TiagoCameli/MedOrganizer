@@ -39,6 +39,12 @@ export function useMaterias() {
       .single()
 
     if (error) throw error
+
+    // Auto-create root folder for the new materia
+    await supabase
+      .from('pastas')
+      .insert({ user_id: user.id, materia_id: data.id, parent_id: null, nome: data.nome })
+
     setMaterias(prev => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)))
     return data
   }
@@ -57,6 +63,26 @@ export function useMaterias() {
   }
 
   const deleteMateria = async (id: string) => {
+    // Clean up storage files before deleting (DB cascade handles rows)
+    const { data: pastasData } = await supabase
+      .from('pastas')
+      .select('id')
+      .eq('materia_id', id)
+
+    if (pastasData && pastasData.length > 0) {
+      const pastaIds = pastasData.map(p => p.id)
+      const { data: arquivosToDelete } = await supabase
+        .from('arquivos')
+        .select('storage_path')
+        .in('pasta_id', pastaIds)
+
+      if (arquivosToDelete && arquivosToDelete.length > 0) {
+        await supabase.storage
+          .from('materias-arquivos')
+          .remove(arquivosToDelete.map(a => a.storage_path))
+      }
+    }
+
     const { error } = await supabase
       .from('materias')
       .delete()

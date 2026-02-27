@@ -13,6 +13,7 @@ import {
   GraduationCap,
   BookOpen,
   Brain,
+  FolderOpen,
   X,
   LogOut,
   Moon,
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/dashboard/notas', label: 'Notas', icon: GraduationCap },
   { href: '/dashboard/materias', label: 'Matérias', icon: BookOpen },
   { href: '/dashboard/flashcards', label: 'Flashcards', icon: Brain },
+  { href: '/dashboard/arquivos', label: 'Arquivos', icon: FolderOpen },
 ]
 
 interface SidebarProps {

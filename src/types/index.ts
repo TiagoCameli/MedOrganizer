@@ -170,3 +170,24 @@ export interface StudyGoal {
   tipo: 'semanal' | 'mensal'
   created_at: string
 }
+
+export interface Pasta {
+  id: string
+  user_id: string
+  materia_id: string
+  parent_id: string | null
+  nome: string
+  created_at: string
+}
+
+export interface Arquivo {
+  id: string
+  user_id: string
+  pasta_id: string
+  nome: string
+  nome_original: string
+  tamanho: number
+  tipo_mime: string
+  storage_path: string
+  created_at: string
+}
